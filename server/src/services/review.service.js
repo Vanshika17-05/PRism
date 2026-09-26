@@ -3,6 +3,7 @@ import { buildReviewableFiles, validateFindings } from "./diff.service.js";
 import { getInstallationOctokit, listPullRequestFiles, loadFileContents, postReview } from "./github.service.js";
 import { reviewWithAi } from "./ai.service.js";
 import { analyzeComplexity, enrichFindingMemory } from "./python.service.js";
+import { lintFiles, lintResultsToFindings } from "./lint.service.js";
 
 const severityRank = { low: 1, medium: 2, high: 3 };
 
@@ -47,17 +48,21 @@ export async function processPullRequestReview({ repository, pullRequest, delive
       await review.save(); return review;
     }
 
-    const contentPromise = loadFileContents(octokit, repository.owner, repository.name, pullRequest.head.sha, reviewable)
-      .then(analyzeComplexity);
+    const sourceFilesPromise = loadFileContents(octokit, repository.owner, repository.name, pullRequest.head.sha, reviewable);
+    // Static analysis starts before the local LLM call and runs concurrently so it does not add serial review latency.
+    const complexityPromise = sourceFilesPromise.then(analyzeComplexity);
+    const lintPromise = sourceFilesPromise.then(lintFiles);
     const results = [];
     for (const group of batches(reviewable)) results.push(await reviewWithAi({ title: pullRequest.title, description: pullRequest.body, files: group, persona: repository.settings.persona, customRules: repository.settings.customRules }));
-    const valid = validateFindings(results.flatMap((result) => result.findings), reviewable);
+    const valid = validateFindings(results.flatMap((result) => result.findings.map((finding) => ({ ...finding, source: "ai" }))), reviewable);
     const threshold = severityRank[repository.settings.severityThreshold || "low"];
     const filtered = valid.filter((finding) => severityRank[finding.severity] >= threshold);
     // Candidate findings are checked against learned non-issues before either GitHub or a human reviewer sees them.
     const memory = await enrichFindingMemory(repository.id, review.id, filtered);
-    const findings = memory.findings;
-    const fileComplexity = await contentPromise;
+    const lintResults = await lintPromise;
+    const lintFindings = validateFindings(lintResultsToFindings(lintResults), reviewable);
+    const findings = [...memory.findings, ...lintFindings];
+    const fileComplexity = await complexityPromise;
     const summary = results.map((result) => result.summary).filter(Boolean).join("\n\n");
     const overallRating = findings.some((item) => item.severity === "high") ? "request_changes" : findings.length ? "comment" : "approve";
     const posted = await postReview(octokit, {

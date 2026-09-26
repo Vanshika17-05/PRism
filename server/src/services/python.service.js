@@ -15,6 +15,13 @@ export async function analyzeComplexity(files) {
   catch (error) { logger.warn({ err: error }, "Complexity enrichment unavailable"); return []; }
 }
 
+export async function lintPythonFiles(files) {
+  const pythonFiles = files.filter((file) => file.language === "python");
+  if (!pythonFiles.length) return [];
+  try { return (await request("/lint", { method: "POST", body: { files: pythonFiles } })).files || []; }
+  catch (error) { logger.warn({ err: error }, "Python lint unavailable"); return []; }
+}
+
 export async function enrichFindingMemory(repoId, reviewId, findings) {
   const results = await Promise.all(findings.map(async (finding) => {
     try {

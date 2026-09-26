@@ -14,7 +14,7 @@ GitHub webhook -> Express orchestration -> local Ollama structured review
 MongoDB <- repositories, users, reviews -> React dashboard
 ```
 
-Node owns authentication, GitHub App integration, Ollama calls, persistence, and API orchestration. Python deliberately owns local vector similarity and static metrics: Chroma remembers related findings and learned non-issues; Radon evaluates Python; a deterministic heuristic evaluates JavaScript and TypeScript. Python enrichment is optional at runtime—if it is unavailable, the GitHub review still completes.
+Node owns authentication, GitHub App integration, Ollama calls, persistence, API orchestration, and ESLint analysis for JavaScript/TypeScript. Python deliberately owns local vector similarity and Python static metrics: Chroma remembers related findings and learned non-issues; Radon measures complexity and Pyflakes reports deterministic errors. Python enrichment is optional at runtime—if it is unavailable, the GitHub review still completes.
 
 ## Local demo (no credentials required)
 
@@ -95,6 +95,7 @@ Python service:
 - `GET /health`
 - `POST /embed-and-search`
 - `POST /complexity`
+- `POST /lint`
 
 ## Verification
 
@@ -114,5 +115,7 @@ Docker Compose is optional and starts MongoDB, Ollama, the API, and the Python s
 - 7-day signed JWT sessions and bcrypt password hashes
 - Ollama JSON mode and schema validation with no paid API calls
 - Graceful degradation when the Python enrichment service is unavailable
+- Parallel AI and deterministic lint analysis with explicit source attribution
+- Vector suppression is limited to AI judgments; lint violations cannot be dismissed as false positives
 
 Built by Vanshika Sambher.

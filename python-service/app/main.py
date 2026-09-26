@@ -3,6 +3,7 @@ import math
 import os
 import re
 import uuid
+from io import StringIO
 from pathlib import Path
 from typing import Literal
 
@@ -12,6 +13,8 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 from radon.complexity import cc_visit
 from radon.metrics import mi_visit
+from pyflakes.api import check as pyflakes_check
+from pyflakes.reporter import Reporter
 
 load_dotenv()
 app = FastAPI(title="PRism Intelligence Service", version="1.1.0")
@@ -126,4 +129,28 @@ def complexity(body: ComplexityRequest):
             branches = len(re.findall(r"\b(if|for|while|case|catch)\b|&&|\|\||\?", source.content))
             score = 1.0 + branches / max(1, len(re.findall(r"\b(function|=>|class)\b", source.content)))
         output.append({"path": source.path, "complexityScore": round(score, 2), "maintainabilityIndex": maintainability, "linesOfCode": loc, "commentRatio": comment_ratio})
+    return {"files": output}
+
+
+@app.post("/lint")
+def lint(body: ComplexityRequest):
+    """Python lint belongs here; JS/TS lint stays in Node where ESLint's API is native."""
+    output = []
+    for source in body.files:
+        if source.language.lower() not in ("py", "python"):
+            continue
+        warnings, errors = StringIO(), StringIO()
+        pyflakes_check(source.content, source.path, Reporter(warnings, errors))
+        lint_errors = []
+        for raw in (warnings.getvalue() + errors.getvalue()).splitlines():
+            match = re.match(r".+?:(\d+):(?:(\d+):)?\s*(.+)", raw)
+            if match:
+                lint_errors.append({"line": int(match.group(1)), "ruleId": "pyflakes", "message": match.group(3), "severity": "high" if "undefined name" in match.group(3).lower() else "medium"})
+        try:
+            blocks = cc_visit(source.content)
+            score = sum(block.complexity for block in blocks) / len(blocks) if blocks else 1.0
+            maintainability = round(mi_visit(source.content, multi=True), 2)
+        except (SyntaxError, ValueError):
+            score, maintainability = 0.0, None
+        output.append({"path": source.path, "lintErrors": lint_errors, "complexityScore": round(score, 2), "maintainabilityIndex": maintainability})
     return {"files": output}
