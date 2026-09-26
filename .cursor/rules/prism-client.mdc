@@ -1,0 +1,15 @@
+---
+description: PRism client design and component conventions
+alwaysApply: true
+---
+
+# PRism client
+- Use React JavaScript ES modules, React Query for server state, and the shared Axios instance.
+- Never hardcode palette hex values in components. Use CSS tokens from index.css.
+- Cards use translucent white, 20px blur, a 1px border, 14px radius, and restrained turquoise shadow.
+- Buttons and badges use 10px radius. Severity colors are limited to small badges, dots, and chart marks.
+- GradientMeshBackground appears only in the Overview hero. MagneticButton wraps at most two primary CTAs per page.
+- MorphingTabs is reserved for main navigation and review filters. Lists use staggerChildren 0.05.
+- Keep motion calm and disable nonessential animation for prefers-reduced-motion.
+- Use ShimmerSkeleton for loading, useful empty states, calm error panels, visible keyboard focus, and semantic controls.
+- Desktop sidebar becomes a bottom navigation bar on mobile.

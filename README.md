@@ -78,6 +78,24 @@ npx smee-client --url https://smee.io/YOUR_CHANNEL --target http://localhost:410
 - `GET /api/repos`
 - `GET /api/repos/:id/stats`
 
+## Client
+
+The Phase 1 React dashboard is available at `http://localhost:5173`. It includes the responsive application shell, Overview analytics, honest empty and error states, self-hosted Inter fonts, glass surfaces, restrained cursor spotlight effects, animated counters, chart visualizations, and reduced-motion support.
+
+Set `VITE_API_URL=http://localhost:4100` in `client/.env` when the API runs on a different origin. During local Vite development, `/api` is proxied to port `4100`, so the variable may be left empty.
+
+Run both applications:
+
+```bash
+pnpm dev
+```
+
+Or run only the client:
+
+```bash
+pnpm dev:client
+```
+
 ## Phase 1 verification
 
 Health check:
