@@ -1,0 +1,9 @@
+{
+  "name": "@prism/client",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "node -e \"console.log('Client begins in Phase 3 after Phase 1 verification.')\""
+  }
+}

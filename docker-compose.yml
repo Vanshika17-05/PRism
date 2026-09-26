@@ -1,0 +1,42 @@
+services:
+  mongo:
+    image: mongo:7
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - prism_mongo:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  ollama:
+    image: ollama/ollama:latest
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+      - prism_ollama:/root/.ollama
+
+  server:
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+    restart: unless-stopped
+    env_file: server/.env
+    environment:
+      MONGODB_URI: mongodb://mongo:27017/prism
+      OLLAMA_BASE_URL: http://ollama:11434
+    ports:
+      - "4100:4100"
+    depends_on:
+      mongo:
+        condition: service_healthy
+      ollama:
+        condition: service_started
+
+volumes:
+  prism_mongo:
+  prism_ollama:

@@ -1,0 +1,18 @@
+---
+description: PRism engineering, architecture, and interface conventions
+alwaysApply: true
+---
+
+# PRism conventions
+
+- Use JavaScript ES modules throughout. Keep modules small, explicit, and testable.
+- Validate configuration with Zod and fail at startup with actionable messages.
+- Treat webhook bodies as untrusted bytes. Verify GitHub HMAC before parsing JSON.
+- Scope repository and review operations to GitHub installation data.
+- Make webhook handling idempotent. Respond within GitHub's timeout and contain background failures.
+- Only post inline findings whose new-file line exists in the parsed patch.
+- Use local Ollama as the default AI provider so normal development creates no API bill.
+- Never log secrets, private keys, webhook bodies, or repository source.
+- The future client uses #0A0B0D background, #111318 surfaces, #171A21 elevated surfaces, #1F232B borders, #8B93A1 muted text, #E8EAED primary text, and #00D4AA accent.
+- Use restrained motion, hairline borders, generous spacing, Inter, Lucide icons, responsive layouts, skeletons, empty states, and accessible focus states.
+- Do not add placeholder product features beyond the requested settings placeholder in Phase 3.
