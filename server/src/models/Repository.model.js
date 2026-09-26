@@ -10,7 +10,9 @@ const repositorySchema = new mongoose.Schema({
   settings: {
     ignoredPaths: { type: [String], default: [] },
     maxFilesPerReview: { type: Number, min: 1, max: 100, default: 20 },
-    severityThreshold: { type: String, enum: ["low", "medium", "high"], default: "low" }
+    severityThreshold: { type: String, enum: ["low", "medium", "high"], default: "low" },
+    persona: { type: String, enum: ["strict", "balanced", "friendly"], default: "balanced" },
+    customRules: { type: [String], default: [] }
   }
 }, { timestamps: true });
 

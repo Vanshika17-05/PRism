@@ -10,6 +10,8 @@ import "@fontsource/inter/latin-700.css";
 import "@fontsource/inter/latin-800.css";
 import "./index.css";
 import App from "./App";
+import { AuthProvider } from "@/context/AuthContext";
+import { ThemeProvider } from "@/context/ThemeContext";
 
 const queryClient = new QueryClient({ defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false } } });
-ReactDOM.createRoot(document.getElementById("root")).render(<React.StrictMode><QueryClientProvider client={queryClient}><BrowserRouter><App /><Toaster position="top-right" richColors closeButton toastOptions={{ className: "prism-toast" }} /></BrowserRouter></QueryClientProvider></React.StrictMode>);
+ReactDOM.createRoot(document.getElementById("root")).render(<React.StrictMode><QueryClientProvider client={queryClient}><ThemeProvider><AuthProvider><BrowserRouter><App /><Toaster position="top-right" closeButton toastOptions={{ className: "prism-toast" }} /></BrowserRouter></AuthProvider></ThemeProvider></QueryClientProvider></React.StrictMode>);

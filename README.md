@@ -1,102 +1,38 @@
 # PRism
 
-PRism is a GitHub App that reviews pull requests with a locally hosted coding model. GitHub sends signed webhooks, PRism validates and filters the diff, asks Ollama for structured findings, validates every inline comment against real changed lines, and posts a native GitHub review. The dashboard read API exposes review history and repository analytics.
+PRism is a portfolio-grade AI pull-request reviewer. A GitHub App receives signed webhook events, Node orchestrates GitHub and OpenAI review, a Python intelligence service adds vector memory and deterministic code metrics, and a claymorphism React dashboard turns the results into engineering signals.
 
-The default architecture uses only free and local components. Ollama runs on your machine, MongoDB Community Edition stores data locally, and GitHub App API access has no usage charge. No OpenAI, Gemini, Stripe, AWS, Redis, or other paid API is used.
+## Architecture
 
 ```text
-GitHub Pull Request
-        |
-        | signed webhook
-        v
-Express API -----> MongoDB Community
-    |                  |
-    | fetch diff       | reviews + stats
-    v                  v
-GitHub API       Dashboard read API
-    |
-    | filtered, chunked diff
-    v
-Local Ollama (qwen2.5-coder)
-    |
-    | validated findings only
-    v
-GitHub Pull Request Review
+GitHub webhook -> Express orchestration -> OpenAI structured review
+                       |                         |
+                       +-> FastAPI/Chroma -------+-> validated GitHub review
+                               |
+                         Radon + JS/TS metrics
+
+MongoDB <- repositories, users, reviews -> React dashboard
 ```
 
-## Safety and reliability
+Node owns authentication, GitHub App integration, OpenAI calls, persistence, and API orchestration. Python deliberately owns vector similarity and static metrics: Chroma remembers related findings; Radon evaluates Python; a deterministic heuristic evaluates JavaScript and TypeScript. Python enrichment is optional at runtime—if it is unavailable, the GitHub review still completes.
 
-- Raw-body HMAC SHA-256 webhook verification with timing-safe comparison
-- Idempotency by GitHub delivery ID and repository/PR/head SHA
-- Immediate `202` webhook acknowledgement and contained background processing
-- File filtering, prompt injection resistance, bounded batches, schema validation, and diff-line validation
-- Private keys and webhook signatures redacted from structured logs
-- Retry fallback when GitHub rejects an inline line comment
-- Indexed, aggregated MongoDB dashboard queries
+## Local demo (no credentials required)
 
-## Zero-charge local development
-
-Install Node.js 22+, MongoDB Community Edition, and [Ollama](https://ollama.com). Pull the local coding model:
+Requirements: Node.js 22+ and pnpm.
 
 ```bash
-ollama pull qwen2.5-coder:7b
-```
-
-The model download uses disk space and local compute but has no API fee. Keep PRism local or self-host it on hardware you control to guarantee zero hosting charges.
-
-Docker users can start MongoDB, Ollama, and the API with `docker compose up --build`. After the first start, run `docker compose exec ollama ollama pull qwen2.5-coder:7b` once.
-
-### Create the GitHub App
-
-1. Open GitHub **Settings → Developer settings → GitHub Apps → New GitHub App**.
-2. Set the webhook URL to your smee.io proxy URL during development.
-3. Create a strong webhook secret.
-4. Repository permissions: **Pull requests: Read & write**, **Contents: Read**, **Metadata: Read**.
-5. Subscribe to **Pull request**, **Installation**, and **Installation repositories** events.
-6. Generate and download the private key. GitHub App/API access is free, subject to rate limits.
-
-### Configure and run
-
-```bash
-cp server/.env.example server/.env
-npm install
-npm run dev
-```
-
-Put the private key in `GITHUB_APP_PRIVATE_KEY` with newlines written as `\n`. Start a free smee proxy:
-
-```bash
-npx smee-client --url https://smee.io/YOUR_CHANNEL --target http://localhost:4100/api/webhooks/github
-```
-
-## API
-
-- `GET /api/health`
-- `POST /api/webhooks/github`
-- `GET /api/reviews?repo=&status=&page=`
-- `GET /api/reviews/:id`
-- `GET /api/repos`
-- `GET /api/repos/:id/stats`
-
-## Client
-
-The Phase 1 React dashboard is available at `http://localhost:5173`. It includes the responsive application shell, Overview analytics, honest empty and error states, self-hosted Inter fonts, glass surfaces, restrained cursor spotlight effects, animated counters, chart visualizations, and reduced-motion support.
-
-Set `VITE_API_URL=http://localhost:4100` in `client/.env` when the API runs on a different origin. During local Vite development, `/api` is proxied to port `4100`, so the variable may be left empty.
-
-Run both applications:
-
-```bash
+pnpm install
 pnpm dev
 ```
 
-Or run only the client:
+Open `http://localhost:5173` and sign in with:
 
-```bash
-pnpm dev:client
+```text
+demo@prism.dev
+prism-demo-2026
 ```
 
-## Phase 1 verification
+The checked-in examples default to `USE_MOCKS=true`; local `.env` files are ignored. Mock mode provides realistic repositories, findings, analytics, vector-memory badges, and file complexity values without MongoDB, GitHub, or OpenAI credentials.
 
 Health check:
 
@@ -104,15 +40,79 @@ Health check:
 curl http://localhost:4100/api/health
 ```
 
-Bad signatures must return `401`:
+## Run the Python intelligence service
 
 ```bash
-curl -i -X POST http://localhost:4100/api/webhooks/github -H "Content-Type: application/json" -H "X-GitHub-Event: ping" -H "X-GitHub-Delivery: local-bad-signature" -H "X-Hub-Signature-256: sha256=bad" --data '{}'
+cd python-service
+python -m venv .venv
+# Windows: .venv\Scripts\activate
+# macOS/Linux: source .venv/bin/activate
+pip install -r requirements.txt
+uvicorn app.main:app --reload --port 8100
 ```
 
-Create a valid signature and send a safely ignored ping payload:
+Without `OPENAI_API_KEY`, review memory uses a deterministic local embedding for development. With a key, it uses LangChain's `OpenAIEmbeddings` and `text-embedding-3-small`. Chroma data persists under `python-service/data/chroma` by default.
+
+## Live integration configuration
+
+Copy `server/.env.example` to `server/.env`, set `USE_MOCKS=false`, and configure:
+
+- `MONGODB_URI`
+- `JWT_SECRET`
+- `GITHUB_APP_ID`
+- `GITHUB_APP_PRIVATE_KEY`
+- `GITHUB_WEBHOOK_SECRET`
+- `OPENAI_API_KEY`
+- `OPENAI_MODEL` (defaults to `gpt-4o-mini`)
+- `PYTHON_SERVICE_URL`
+- `CLIENT_URL`
+- `PORT`
+
+The GitHub App requires **Pull requests: read/write**, **Contents: read**, and **Metadata: read**. Subscribe it to pull request, installation, and installation-repositories events. Point its webhook to `/api/webhooks/github`.
+
+## API
+
+Public:
+
+- `GET /api/health`
+- `POST /api/auth/register`
+- `POST /api/auth/login`
+- `POST /api/webhooks/github`
+
+JWT protected:
+
+- `POST /api/auth/logout`
+- `GET /api/auth/me`
+- `GET /api/reviews`
+- `GET /api/reviews/:id`
+- `PATCH /api/reviews/:id/findings/:findingId/dismiss`
+- `GET /api/repos`
+- `GET /api/repos/:id/stats`
+- `PATCH /api/repos/:id/settings`
+
+Python service:
+
+- `GET /health`
+- `POST /embed-and-search`
+- `POST /complexity`
+
+## Verification
 
 ```bash
-node -e "const c=require('node:crypto');const b='{}';console.log('sha256='+c.createHmac('sha256',process.env.GITHUB_WEBHOOK_SECRET).update(b).digest('hex'))"
-curl -i -X POST http://localhost:4100/api/webhooks/github -H "Content-Type: application/json" -H "X-GitHub-Event: ping" -H "X-GitHub-Delivery: local-ping-1" -H "X-Hub-Signature-256: PASTE_SIGNATURE" --data '{}'
+pnpm --filter @prism/server test
+pnpm --filter @prism/client build
 ```
+
+Docker Compose is optional and starts MongoDB, the API, and the Python service. Real OpenAI and GitHub credentials are still required for live PR review.
+
+## Security and reliability
+
+- Raw-body HMAC SHA-256 webhook verification with timing-safe comparison
+- Immediate `202` acknowledgement and contained asynchronous processing
+- Delivery and commit-level idempotency
+- Diff size/binary/lockfile filtering and valid-line verification
+- 7-day signed JWT sessions and bcrypt password hashes
+- OpenAI JSON mode, schema validation, and exponential retry on transient failures
+- Graceful degradation when the Python enrichment service is unavailable
+
+Built by Vanshika Sambher.

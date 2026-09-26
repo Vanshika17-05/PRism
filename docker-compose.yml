@@ -12,13 +12,18 @@ services:
       timeout: 5s
       retries: 10
 
-  ollama:
-    image: ollama/ollama:latest
+  python-service:
+    build:
+      context: .
+      dockerfile: python-service/Dockerfile
     restart: unless-stopped
+    env_file: python-service/.env
+    environment:
+      CHROMA_PERSIST_DIR: /data/chroma
     ports:
-      - "11434:11434"
+      - "8100:8100"
     volumes:
-      - prism_ollama:/root/.ollama
+      - prism_chroma:/data/chroma
 
   server:
     build:
@@ -28,15 +33,15 @@ services:
     env_file: server/.env
     environment:
       MONGODB_URI: mongodb://mongo:27017/prism
-      OLLAMA_BASE_URL: http://ollama:11434
+      PYTHON_SERVICE_URL: http://python-service:8100
     ports:
       - "4100:4100"
     depends_on:
       mongo:
         condition: service_healthy
-      ollama:
+      python-service:
         condition: service_started
 
 volumes:
   prism_mongo:
-  prism_ollama:
+  prism_chroma:

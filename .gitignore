@@ -5,6 +5,10 @@ node_modules/
 dist/
 coverage/
 *.log
+__pycache__/
+*.pyc
+.venv/
+python-service/data/
 .DS_Store
 .idea/
 .vscode/

@@ -1,0 +1,3 @@
+import { BellRing, Sparkles } from "lucide-react";
+import { GradientMeshBackground } from "@/components/effects/GradientMeshBackground";
+export default function SettingsPage(){return <div className="relative grid min-h-[65vh] place-items-center overflow-hidden rounded-card"><GradientMeshBackground/><div className="clay-card relative max-w-xl p-10 text-center"><span className="clay-icon mx-auto text-accent"><BellRing/></span><h1 className="mt-6 text-3xl font-black">More settings coming soon</h1><p className="mt-3 leading-7 text-muted">Notifications, organization policies, and team-level controls are next on the roadmap.</p><span className="clay-badge mt-6 inline-flex items-center gap-2"><Sparkles size={13}/> Your repository settings are already live</span></div></div>}

@@ -1,7 +1,8 @@
 import { Review } from "../models/Review.model.js";
 import { buildReviewableFiles, validateFindings } from "./diff.service.js";
-import { getInstallationOctokit, listPullRequestFiles, postReview } from "./github.service.js";
+import { getInstallationOctokit, listPullRequestFiles, loadFileContents, postReview } from "./github.service.js";
 import { reviewWithAi } from "./ai.service.js";
+import { analyzeComplexity, enrichFindingMemory } from "./python.service.js";
 
 const severityRank = { low: 1, medium: 2, high: 3 };
 
@@ -20,7 +21,7 @@ function batches(files, maxCharacters = 45_000) {
 function summaryBody(summary, findings) {
   const counts = { high: 0, medium: 0, low: 0 };
   findings.forEach((finding) => { counts[finding.severity] += 1; });
-  return `## PRism review\n\n${summary}\n\n| Severity | Findings |\n|---|---:|\n| High | ${counts.high} |\n| Medium | ${counts.medium} |\n| Low | ${counts.low} |\n\n<sub>Reviewed locally by PRism · AI suggestions should be verified by a human.</sub>`;
+  return `## PRism review\n\n${summary}\n\n| Severity | Findings |\n|---|---:|\n| High | ${counts.high} |\n| Medium | ${counts.medium} |\n| Low | ${counts.low} |\n\n<sub>Reviewed by PRism · AI suggestions should be verified by a human.</sub>`;
 }
 
 export async function processPullRequestReview({ repository, pullRequest, deliveryId }) {
@@ -46,11 +47,15 @@ export async function processPullRequestReview({ repository, pullRequest, delive
       await review.save(); return review;
     }
 
+    const contentPromise = loadFileContents(octokit, repository.owner, repository.name, pullRequest.head.sha, reviewable)
+      .then(analyzeComplexity);
     const results = [];
-    for (const group of batches(reviewable)) results.push(await reviewWithAi({ title: pullRequest.title, description: pullRequest.body, files: group }));
+    for (const group of batches(reviewable)) results.push(await reviewWithAi({ title: pullRequest.title, description: pullRequest.body, files: group, persona: repository.settings.persona, customRules: repository.settings.customRules }));
     const valid = validateFindings(results.flatMap((result) => result.findings), reviewable);
     const threshold = severityRank[repository.settings.severityThreshold || "low"];
-    const findings = valid.filter((finding) => severityRank[finding.severity] >= threshold);
+    const filtered = valid.filter((finding) => severityRank[finding.severity] >= threshold);
+    const findings = await enrichFindingMemory(repository.id, review.id, filtered);
+    const fileComplexity = await contentPromise;
     const summary = results.map((result) => result.summary).filter(Boolean).join("\n\n");
     const overallRating = findings.some((item) => item.severity === "high") ? "request_changes" : findings.length ? "comment" : "approve";
     const posted = await postReview(octokit, {
@@ -59,6 +64,7 @@ export async function processPullRequestReview({ repository, pullRequest, delive
     });
     review.status = "completed"; review.summary = summary; review.overallRating = overallRating;
     review.findings = findings.map((finding) => ({ ...finding, posted: true })); review.githubReviewId = posted.data.id;
+    review.fileComplexity = fileComplexity;
     review.stats = {
       filesReviewed: reviewable.length, filesSkipped: skipped.length, findingsCount: findings.length,
       tokensIn: results.reduce((sum, item) => sum + item.usage.input, 0), tokensOut: results.reduce((sum, item) => sum + item.usage.output, 0), durationMs: Date.now() - startedAt
