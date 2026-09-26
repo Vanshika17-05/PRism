@@ -14,7 +14,7 @@ import { MorphingTabs } from "@/components/effects/MorphingTabs";
 function Suggestion({ text }) {
   const [copied, setCopied] = useState(false);
   async function copy() { await navigator.clipboard.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 1500); }
-  return <div className="relative mt-4"><pre className="overflow-auto rounded-[18px] bg-[#17090D] p-4 pr-12 text-xs text-[#E88BA0]"><code>{text}</code></pre><button className="absolute right-2 top-2 grid size-8 place-items-center rounded-xl bg-white/10 text-white" onClick={copy} aria-label="Copy suggestion">{copied ? <Check size={15} /> : <Clipboard size={15} />}</button></div>;
+  return <div className="relative mt-4"><pre className="overflow-auto rounded-[18px] bg-[#0B0C0F] p-4 pr-12 text-xs text-[#C7D2FE]"><code>{text}</code></pre><button className="absolute right-2 top-2 grid size-8 place-items-center rounded-xl bg-white/10 text-white" onClick={copy} aria-label="Copy suggestion">{copied ? <Check size={15} /> : <Clipboard size={15} />}</button></div>;
 }
 
 export default function ReviewDetail() {

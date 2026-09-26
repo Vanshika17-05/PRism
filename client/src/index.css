@@ -3,13 +3,13 @@
 @tailwind utilities;
 
 :root, :root[data-theme="light"] {
-  --bg:#FBF6F5; --surface:#FFFFFF; --surface-clay:#F3E4E2; --surface-alt:#EBD6D8; --border:rgba(122,31,61,.18);
-  --accent:#7A1F3D; --accent-dark:#5C1730; --accent-light:#B85C74; --accent-glow:rgba(122,31,61,.25);
-  --text-primary:#2B0E15; --text-muted:#8A6068; --clay-shadow-dark:rgba(122,31,61,.15); --clay-shadow-light:rgba(255,255,255,.9);
+  --bg:#F7F8FA; --surface:#FFFFFF; --surface-clay:#ECEEF2; --surface-alt:#E1E4EA; --border:rgba(79,70,229,.16);
+  --accent:#4F46E5; --accent-dark:#4338CA; --accent-light:#A5B4FC; --accent-glow:rgba(79,70,229,.22);
+  --text-primary:#14161C; --text-muted:#6B7280; --clay-shadow-dark:rgba(20,20,30,.08); --clay-shadow-light:rgba(255,255,255,.9);
   --severity-high:#FF6B6B; --severity-med:#FFB84D; --severity-low:#4DA6FF; --radius:24px;
   font-family:"Inter",sans-serif; color:var(--text-primary); background:var(--bg); font-synthesis:none;
 }
-:root[data-theme="dark"] { --bg:#150A0C; --surface:#1F1013; --surface-clay:#2A1519; --surface-alt:#351B21; --border:rgba(232,139,160,.15); --accent:#C24463; --accent-dark:#7A1F3D; --accent-light:#E88BA0; --accent-glow:rgba(194,68,99,.22); --text-primary:#F7E9EB; --text-muted:#A67985; --clay-shadow-dark:rgba(0,0,0,.45); --clay-shadow-light:rgba(194,68,99,.08); }
+:root[data-theme="dark"] { --bg:#0B0C0F; --surface:#16171C; --surface-clay:#1E2027; --surface-alt:#282B35; --border:rgba(129,140,248,.16); --accent:#818CF8; --accent-dark:#6366F1; --accent-light:#C7D2FE; --accent-glow:rgba(129,140,248,.2); --text-primary:#F3F4F6; --text-muted:#9CA3AF; --clay-shadow-dark:rgba(0,0,0,.5); --clay-shadow-light:rgba(129,140,248,.06); }
 *{box-sizing:border-box} html{scroll-behavior:smooth} body{margin:0;min-width:320px;min-height:100vh;background:var(--bg);transition:background .2s,color .2s} button,input,select,textarea{font:inherit} button{cursor:pointer} a{color:inherit} ::selection{background:var(--accent-glow)}
 @layer components {
   .clay-card{position:relative;border:1px solid var(--border);border-radius:var(--radius);background:linear-gradient(145deg,var(--surface),var(--surface-clay));box-shadow:8px 8px 16px var(--clay-shadow-dark),-8px -8px 16px var(--clay-shadow-light),inset 1px 1px 2px color-mix(in srgb,var(--clay-shadow-light) 55%,transparent)}
