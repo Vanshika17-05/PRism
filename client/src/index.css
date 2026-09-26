@@ -3,18 +3,18 @@
 @tailwind utilities;
 
 :root, :root[data-theme="light"] {
-  --bg:#F0FBFA; --surface:#FFFFFF; --surface-clay:#E4F7F4; --surface-alt:#D9F3EF; --border:rgba(14,163,150,.18);
-  --accent:#14C7B4; --accent-dark:#0EA396; --accent-light:#7CE8DA; --accent-glow:rgba(20,199,180,.25);
-  --text-primary:#0B2B27; --text-muted:#5C8A85; --clay-shadow-dark:rgba(20,199,180,.15); --clay-shadow-light:rgba(255,255,255,.9);
+  --bg:#FBF6F5; --surface:#FFFFFF; --surface-clay:#F3E4E2; --surface-alt:#EBD6D8; --border:rgba(122,31,61,.18);
+  --accent:#7A1F3D; --accent-dark:#5C1730; --accent-light:#B85C74; --accent-glow:rgba(122,31,61,.25);
+  --text-primary:#2B0E15; --text-muted:#8A6068; --clay-shadow-dark:rgba(122,31,61,.15); --clay-shadow-light:rgba(255,255,255,.9);
   --severity-high:#FF6B6B; --severity-med:#FFB84D; --severity-low:#4DA6FF; --radius:24px;
   font-family:"Inter",sans-serif; color:var(--text-primary); background:var(--bg); font-synthesis:none;
 }
-:root[data-theme="dark"] { --bg:#0A1614; --surface:#0F1F1C; --surface-clay:#132723; --surface-alt:#17332E; --border:rgba(95,253,230,.14); --accent:#1EE9CE; --accent-dark:#14C7B4; --accent-light:#5FFDE6; --accent-glow:rgba(30,233,206,.18); --text-primary:#EAFBF8; --text-muted:#7FA39D; --clay-shadow-dark:rgba(0,0,0,.45); --clay-shadow-light:rgba(30,233,206,.08); }
+:root[data-theme="dark"] { --bg:#150A0C; --surface:#1F1013; --surface-clay:#2A1519; --surface-alt:#351B21; --border:rgba(232,139,160,.15); --accent:#C24463; --accent-dark:#7A1F3D; --accent-light:#E88BA0; --accent-glow:rgba(194,68,99,.22); --text-primary:#F7E9EB; --text-muted:#A67985; --clay-shadow-dark:rgba(0,0,0,.45); --clay-shadow-light:rgba(194,68,99,.08); }
 *{box-sizing:border-box} html{scroll-behavior:smooth} body{margin:0;min-width:320px;min-height:100vh;background:var(--bg);transition:background .2s,color .2s} button,input,select,textarea{font:inherit} button{cursor:pointer} a{color:inherit} ::selection{background:var(--accent-glow)}
 @layer components {
   .clay-card{position:relative;border:1px solid var(--border);border-radius:var(--radius);background:linear-gradient(145deg,var(--surface),var(--surface-clay));box-shadow:8px 8px 16px var(--clay-shadow-dark),-8px -8px 16px var(--clay-shadow-light),inset 1px 1px 2px color-mix(in srgb,var(--clay-shadow-light) 55%,transparent)}
   .clay-control{border:1px solid var(--border);border-radius:20px;background:linear-gradient(145deg,var(--surface),var(--surface-clay));box-shadow:4px 4px 10px var(--clay-shadow-dark),-4px -4px 10px var(--clay-shadow-light)}
-  .clay-button{border:1px solid color-mix(in srgb,var(--accent) 65%,transparent);border-radius:18px;background:linear-gradient(145deg,var(--accent-light),var(--accent-dark));color:#052B26;box-shadow:6px 6px 12px var(--clay-shadow-dark),-5px -5px 12px var(--clay-shadow-light),inset 1px 1px 2px rgba(255,255,255,.5);transition:transform .16s,box-shadow .16s}
+  .clay-button{border:1px solid color-mix(in srgb,var(--accent) 65%,transparent);border-radius:18px;background:linear-gradient(145deg,var(--accent-light),var(--accent-dark));color:#fff;box-shadow:6px 6px 12px var(--clay-shadow-dark),-5px -5px 12px var(--clay-shadow-light),inset 1px 1px 2px rgba(255,255,255,.5);transition:transform .16s,box-shadow .16s}
   .clay-button:hover{transform:translateY(-2px);box-shadow:9px 9px 18px var(--clay-shadow-dark),-7px -7px 16px var(--clay-shadow-light)} .clay-button:active,.clay-pressed{box-shadow:inset 5px 5px 10px var(--clay-shadow-dark),inset -5px -5px 10px var(--clay-shadow-light)!important}
   .clay-icon{display:inline-flex;height:40px;width:40px;align-items:center;justify-content:center;border:1px solid var(--border);border-radius:15px;background:linear-gradient(145deg,var(--surface),var(--surface-clay));box-shadow:4px 4px 9px var(--clay-shadow-dark),-4px -4px 9px var(--clay-shadow-light);color:var(--text-primary)} .clay-icon:active{box-shadow:inset 3px 3px 7px var(--clay-shadow-dark),inset -3px -3px 7px var(--clay-shadow-light)}
   .clay-badge{border:1px solid var(--border);border-radius:999px;background:var(--surface);padding:.42rem .75rem;font-size:.75rem;font-weight:700;box-shadow:3px 3px 8px var(--clay-shadow-dark),-3px -3px 8px var(--clay-shadow-light)}

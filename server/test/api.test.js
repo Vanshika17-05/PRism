@@ -12,6 +12,12 @@ test("health, auth, and protected dashboard API", () => withServer(async (base) 
   const login = await fetch(`${base}/api/auth/login`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email: "demo@prism.dev", password: "prism-demo-2026" }) });
   assert.equal(login.status, 200); const { token } = await login.json();
   const repos = await fetch(`${base}/api/repos`, { headers: { authorization: `Bearer ${token}` } }); assert.equal(repos.status, 200); assert.equal((await repos.json()).repositories.length, 3);
+  const reviews = await (await fetch(`${base}/api/reviews`, { headers: { authorization: `Bearer ${token}` } })).json();
+  const finding = reviews.items[0].findings[0];
+  const dismissed = await fetch(`${base}/api/reviews/${reviews.items[0]._id}/findings/${finding._id}/dismiss`, { method: "PATCH", headers: { authorization: `Bearer ${token}`, "content-type": "application/json" }, body: JSON.stringify({ dismissed: true, reason: "Internal test fixture" }) });
+  assert.equal(dismissed.status, 200); assert.equal((await dismissed.json()).learningStored, true);
+  const patterns = await (await fetch(`${base}/api/repos/${reviews.items[0].repository._id}/suppressions`, { headers: { authorization: `Bearer ${token}` } })).json();
+  assert.ok(patterns.patterns.some((pattern) => pattern.reason === "Internal test fixture"));
 }));
 
 test("webhook rejects bad signatures and accepts valid supported events", () => withServer(async (base) => {

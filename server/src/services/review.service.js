@@ -54,7 +54,9 @@ export async function processPullRequestReview({ repository, pullRequest, delive
     const valid = validateFindings(results.flatMap((result) => result.findings), reviewable);
     const threshold = severityRank[repository.settings.severityThreshold || "low"];
     const filtered = valid.filter((finding) => severityRank[finding.severity] >= threshold);
-    const findings = await enrichFindingMemory(repository.id, review.id, filtered);
+    // Candidate findings are checked against learned non-issues before either GitHub or a human reviewer sees them.
+    const memory = await enrichFindingMemory(repository.id, review.id, filtered);
+    const findings = memory.findings;
     const fileComplexity = await contentPromise;
     const summary = results.map((result) => result.summary).filter(Boolean).join("\n\n");
     const overallRating = findings.some((item) => item.severity === "high") ? "request_changes" : findings.length ? "comment" : "approve";
@@ -66,7 +68,7 @@ export async function processPullRequestReview({ repository, pullRequest, delive
     review.findings = findings.map((finding) => ({ ...finding, posted: true })); review.githubReviewId = posted.data.id;
     review.fileComplexity = fileComplexity;
     review.stats = {
-      filesReviewed: reviewable.length, filesSkipped: skipped.length, findingsCount: findings.length,
+      filesReviewed: reviewable.length, filesSkipped: skipped.length, findingsCount: findings.length, suppressedCount: memory.suppressedCount,
       tokensIn: results.reduce((sum, item) => sum + item.usage.input, 0), tokensOut: results.reduce((sum, item) => sum + item.usage.output, 0), durationMs: Date.now() - startedAt
     };
     await review.save(); return review;

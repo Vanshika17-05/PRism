@@ -8,25 +8,27 @@ from typing import Literal
 
 import chromadb
 from dotenv import load_dotenv
-from fastapi import FastAPI
-from langchain_openai import OpenAIEmbeddings
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 from radon.complexity import cc_visit
 from radon.metrics import mi_visit
 
 load_dotenv()
-app = FastAPI(title="PRism Intelligence Service", version="1.0.0")
+app = FastAPI(title="PRism Intelligence Service", version="1.1.0")
 persist_dir = Path(os.getenv("CHROMA_PERSIST_DIR", "./data/chroma"))
 persist_dir.mkdir(parents=True, exist_ok=True)
-collection = chromadb.PersistentClient(path=str(persist_dir)).get_or_create_collection("review_memory", metadata={"hnsw:space": "cosine"})
-openai_key = os.getenv("OPENAI_API_KEY", "").strip()
-embedder = OpenAIEmbeddings(api_key=openai_key, model="text-embedding-3-small") if openai_key else None
+chroma = chromadb.PersistentClient(path=str(persist_dir))
+past_findings = chroma.get_or_create_collection("past_findings", metadata={"hnsw:space": "cosine"})
+known_non_issues = chroma.get_or_create_collection("known_non_issues", metadata={"hnsw:space": "cosine"})
 
 
 class MemoryRequest(BaseModel):
     repoId: str = Field(min_length=1)
     reviewId: str = ""
     findingText: str = Field(min_length=3, max_length=8000)
+    file: str = ""
+    reason: str = Field(default="", max_length=1000)
+    type: Literal["past_finding", "known_non_issue"] = "past_finding"
 
 
 class SourceFile(BaseModel):
@@ -40,6 +42,7 @@ class ComplexityRequest(BaseModel):
 
 
 def local_embedding(text: str, dimensions: int = 256) -> list[float]:
+    """Deterministic local embeddings keep review memory completely free and offline."""
     vector = [0.0] * dimensions
     for token in re.findall(r"[a-zA-Z_][a-zA-Z0-9_]+", text.lower()):
         digest = hashlib.sha256(token.encode()).digest()
@@ -49,34 +52,59 @@ def local_embedding(text: str, dimensions: int = 256) -> list[float]:
     return [value / norm for value in vector]
 
 
-def embed(text: str) -> list[float]:
-    return embedder.embed_query(text) if embedder else local_embedding(text)
+def nearest(collection, repo_id: str, vector: list[float]):
+    if not collection.count():
+        return None
+    result = collection.query(query_embeddings=[vector], n_results=1, where={"repoId": repo_id}, include=["metadatas", "documents", "distances"])
+    if not result.get("ids") or not result["ids"][0]:
+        return None
+    similarity = max(0.0, 1.0 - float(result["distances"][0][0]))
+    return {"id": result["ids"][0][0], "metadata": result["metadatas"][0][0], "text": result["documents"][0][0], "similarity": round(similarity, 4)}
 
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "embeddingProvider": "openai" if embedder else "local-development-fallback", "storedFindings": collection.count()}
+    return {"status": "ok", "embeddingProvider": "local-deterministic", "storedFindings": past_findings.count(), "suppressionPatterns": known_non_issues.count()}
 
 
 @app.post("/embed-and-search")
 def embed_and_search(body: MemoryRequest):
-    vector = embed(body.findingText)
+    vector = local_embedding(body.findingText)
+    if body.type == "known_non_issue":
+        pattern_id = str(uuid.uuid4())
+        known_non_issues.add(ids=[pattern_id], embeddings=[vector], documents=[body.findingText[:1000]], metadatas=[{"repoId": body.repoId, "reviewId": body.reviewId, "file": body.file, "reason": body.reason, "type": "known_non_issue"}])
+        return {"stored": True, "id": pattern_id, "match": None, "suppressed": False}
+
+    suppression = nearest(known_non_issues, body.repoId, vector)
+    if suppression and suppression["similarity"] >= 0.86:
+        return {"match": None, "suppressed": True, "suppression": {"id": suppression["id"], "reason": suppression["metadata"].get("reason", ""), "similarity": suppression["similarity"]}}
+
+    previous = nearest(past_findings, body.repoId, vector)
     match = None
-    if collection.count():
-        result = collection.query(query_embeddings=[vector], n_results=1, where={"repoId": body.repoId}, include=["metadatas", "documents", "distances"])
-        if result.get("ids") and result["ids"][0]:
-            similarity = max(0.0, 1.0 - float(result["distances"][0][0]))
-            metadata = result["metadatas"][0][0]
-            if similarity >= 0.78:
-                match = {"reviewId": metadata.get("reviewId", ""), "findingSummary": result["documents"][0][0], "similarity": round(similarity, 4)}
-    collection.add(ids=[str(uuid.uuid4())], embeddings=[vector], documents=[body.findingText[:1000]], metadatas=[{"repoId": body.repoId, "reviewId": body.reviewId}])
-    return {"match": match}
+    if previous and previous["similarity"] >= 0.78:
+        match = {"reviewId": previous["metadata"].get("reviewId", ""), "findingSummary": previous["text"], "similarity": previous["similarity"]}
+    past_findings.add(ids=[str(uuid.uuid4())], embeddings=[vector], documents=[body.findingText[:1000]], metadatas=[{"repoId": body.repoId, "reviewId": body.reviewId, "file": body.file, "type": "past_finding"}])
+    return {"match": match, "suppressed": False}
+
+
+@app.get("/suppressions/{repo_id}")
+def list_suppressions(repo_id: str):
+    result = known_non_issues.get(where={"repoId": repo_id}, include=["metadatas", "documents"])
+    return {"patterns": [{"id": item_id, "text": document, **metadata} for item_id, document, metadata in zip(result["ids"], result["documents"], result["metadatas"])]}
+
+
+@app.delete("/suppressions/{repo_id}/{pattern_id}")
+def delete_suppression(repo_id: str, pattern_id: str):
+    result = known_non_issues.get(ids=[pattern_id], where={"repoId": repo_id})
+    if not result["ids"]:
+        raise HTTPException(status_code=404, detail="Suppression pattern not found")
+    known_non_issues.delete(ids=[pattern_id])
+    return {"deleted": True}
 
 
 def basic_metrics(source: SourceFile):
     lines = [line for line in source.content.splitlines() if line.strip()]
-    language = source.language.lower()
-    markers = ("#",) if language in ("py", "python") else ("//", "/*", "*")
+    markers = ("#",) if source.language.lower() in ("py", "python") else ("//", "/*", "*")
     comments = sum(1 for line in lines if line.lstrip().startswith(markers))
     return len(lines), round(comments / len(lines), 3) if lines else 0.0
 

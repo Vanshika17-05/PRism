@@ -2,7 +2,11 @@ import mongoose from "mongoose";
 import { z } from "zod";
 import { Review } from "../models/Review.model.js";
 import { env } from "../config/env.js";
-import { mockReviews } from "../data/mockData.js";
+import { mockReviews, mockSuppressions } from "../data/mockData.js";
+import { storeKnownNonIssue } from "../services/python.service.js";
+import { logger } from "../utils/logger.js";
+
+const dismissSchema = z.object({ dismissed: z.boolean().default(true), reason: z.string().max(1000).optional().default("") });
 
 const querySchema = z.object({ repo: z.string().optional(), status: z.enum(["pending", "processing", "completed", "failed", "skipped"]).optional(), page: z.coerce.number().int().min(1).default(1) });
 
@@ -33,18 +37,25 @@ export async function getReview(req, res) {
 }
 
 export async function dismissFinding(req, res) {
+  const input = dismissSchema.parse(req.body);
   if (env.USE_MOCKS) {
     const review = mockReviews.find((item) => item._id === req.params.id);
     const finding = review?.findings.find((item) => item._id === req.params.findingId);
     if (!finding) return res.status(404).json({ error: "Finding not found" });
-    finding.dismissed = req.body.dismissed !== false;
-    return res.json({ finding });
+    finding.dismissed = input.dismissed; finding.dismissalReason = input.dismissed ? input.reason : "";
+    if (input.dismissed && !mockSuppressions.some((item) => item.findingId === finding._id)) mockSuppressions.push({ id: `mock-suppression-${Date.now()}`, repoId: review.repository._id, reviewId: review._id, findingId: finding._id, file: finding.file, text: `${finding.title}. ${finding.body}`, reason: input.reason, type: "known_non_issue" });
+    return res.json({ finding, learningStored: input.dismissed });
   }
   if (!mongoose.isValidObjectId(req.params.id) || !mongoose.isValidObjectId(req.params.findingId)) return res.status(404).json({ error: "Finding not found" });
   const review = await Review.findById(req.params.id);
   const finding = review?.findings.id(req.params.findingId);
   if (!finding) return res.status(404).json({ error: "Finding not found" });
-  finding.dismissed = req.body.dismissed !== false;
+  finding.dismissed = input.dismissed; finding.dismissalReason = input.dismissed ? input.reason : "";
   await review.save();
-  return res.json({ finding });
+  let learningStored = false;
+  if (input.dismissed) {
+    try { await storeKnownNonIssue({ repoId: review.repository, reviewId: review.id, finding, reason: input.reason }); learningStored = true; }
+    catch (error) { logger.warn({ err: error, reviewId: review.id, findingId: finding.id }, "Could not store suppression feedback"); }
+  }
+  return res.json({ finding, learningStored });
 }
