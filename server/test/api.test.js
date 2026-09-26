@@ -3,6 +3,8 @@ import crypto from "node:crypto";
 import test from "node:test";
 import { createApp } from "../src/app.js";
 import { env } from "../src/config/env.js";
+import { enqueueReview } from "../src/queues/review.queue.js";
+import { mockFailedReviews } from "../src/data/mockData.js";
 
 async function withServer(run) { const server = createApp().listen(0, "127.0.0.1"); await new Promise((resolve) => server.once("listening", resolve)); try { await run(`http://127.0.0.1:${server.address().port}`); } finally { await new Promise((resolve) => server.close(resolve)); } }
 
@@ -29,4 +31,15 @@ test("webhook rejects bad signatures and accepts valid supported events", () => 
   const bad = await fetch(`${base}/api/webhooks/github`, { method: "POST", headers: { "content-type": "application/json", "x-github-event": "pull_request", "x-github-delivery": "test-bad", "x-hub-signature-256": "sha256=bad" }, body }); assert.equal(bad.status, 401);
   const signature = `sha256=${crypto.createHmac("sha256", env.GITHUB_WEBHOOK_SECRET || "").update(body).digest("hex")}`;
   const good = await fetch(`${base}/api/webhooks/github`, { method: "POST", headers: { "content-type": "application/json", "x-github-event": "pull_request", "x-github-delivery": "test-good", "x-hub-signature-256": signature }, body }); assert.equal(good.status, 202);
+}));
+
+test("failed review reaches dead letter after three attempts and can be retried", () => withServer(async (base) => {
+  mockFailedReviews.length = 0;
+  await enqueueReview({ repoId: "66f000000000000000000000001", prNumber: 999, headSha: "forced-failure", deliveryId: "dead-letter-test", forceFailure: true, failureMessage: "Python service unavailable" }, { processNow: true });
+  assert.equal(mockFailedReviews.length, 1); assert.equal(mockFailedReviews[0].attemptsMade, 3);
+  const login = await fetch(`${base}/api/auth/login`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email: "demo@prism.dev", password: "prism-demo-2026" }) });
+  const { token } = await login.json(); const headers = { authorization: `Bearer ${token}` };
+  const listed = await (await fetch(`${base}/api/failed-reviews`, { headers })).json(); assert.equal(listed.pagination.total, 1); assert.match(listed.items[0].error, /Python service unavailable/);
+  const retried = await fetch(`${base}/api/failed-reviews/${listed.items[0]._id}/retry`, { method: "POST", headers }); assert.equal(retried.status, 202);
+  assert.equal(mockFailedReviews.length, 0);
 }));

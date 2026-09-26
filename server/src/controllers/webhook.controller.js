@@ -1,6 +1,6 @@
 import { Repository } from "../models/Repository.model.js";
 import { Review } from "../models/Review.model.js";
-import { processPullRequestReview } from "../services/review.service.js";
+import { enqueueReview } from "../queues/review.queue.js";
 import { logger } from "../utils/logger.js";
 import { env } from "../config/env.js";
 
@@ -28,7 +28,9 @@ async function processWebhook({ payload, event, deliveryId }) {
   );
   const duplicate = await Review.exists({ $or: [{ deliveryId }, { repository: repository.id, prNumber: payload.pull_request.number, headSha: payload.pull_request.head.sha }] });
   if (duplicate) return;
-  await processPullRequestReview({ repository, pullRequest: payload.pull_request, deliveryId });
+  const pullRequest = payload.pull_request;
+  await enqueueReview({ repoId: String(repository.id), prNumber: pullRequest.number, headSha: pullRequest.head.sha, deliveryId });
+  logger.info({ deliveryId, repoId: repository.id, prNumber: pullRequest.number }, "Review queued");
 }
 
 export async function handleGithubWebhook(req, res) {

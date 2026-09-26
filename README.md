@@ -65,6 +65,8 @@ Copy `server/.env.example` to `server/.env`, set `USE_MOCKS=false`, and configur
 - `OLLAMA_BASE_URL`
 - `OLLAMA_MODEL` (defaults to `qwen2.5-coder:7b`)
 - `PYTHON_SERVICE_URL`
+- `REDIS_URL` (local Redis or a Redis Cloud free-tier URL)
+- `REVIEW_CONCURRENCY` (defaults to `2`)
 - `CLIENT_URL`
 - `PORT`
 
@@ -89,6 +91,9 @@ JWT protected:
 - `GET /api/repos`
 - `GET /api/repos/:id/stats`
 - `PATCH /api/repos/:id/settings`
+- `GET /api/failed-reviews`
+- `POST /api/failed-reviews/:id/retry`
+- `DELETE /api/failed-reviews/:id`
 
 Python service:
 
@@ -104,12 +109,14 @@ pnpm --filter @prism/server test
 pnpm --filter @prism/client build
 ```
 
-Docker Compose is optional and starts MongoDB, Ollama, the API, and the Python service. GitHub App credentials are required for live PR review, but no paid AI API is used.
+Docker Compose is optional and starts MongoDB, Redis, Ollama, the API, and the Python service. Without Docker, install Redis locally or use a Redis Cloud free-tier database and set `REDIS_URL`. Mock mode uses an in-memory queue so the dashboard remains usable without Redis. GitHub App credentials are required for live PR review, but no paid AI API is used.
 
 ## Security and reliability
 
 - Raw-body HMAC SHA-256 webhook verification with timing-safe comparison
-- Immediate `202` acknowledgement and contained asynchronous processing
+- Immediate `202` acknowledgement with a BullMQ/Redis review queue
+- Three exponential-backoff attempts, MongoDB dead-letter storage, and dashboard retry/dismiss controls
+- Configurable worker concurrency and token-bucket limits around GitHub and local-AI calls
 - Delivery and commit-level idempotency
 - Diff size/binary/lockfile filtering and valid-line verification
 - 7-day signed JWT sessions and bcrypt password hashes

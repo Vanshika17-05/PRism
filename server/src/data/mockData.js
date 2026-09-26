@@ -43,6 +43,8 @@ export const mockRepositories = [
 
 export const mockSuppressions = [{ id: "mock-suppression-auth", repoId: "66f000000000000000000000002", reviewId: "77f000000000000000000000003", findingId: "historical-auth", file: "src/middleware/auth.js", text: "Missing audience validation in an internal-only test token path.", reason: "This path only accepts fixtures generated inside the isolated test runner.", type: "known_non_issue" }];
 
+export const mockFailedReviews = [];
+
 const findings = {
   auth: { _id: "finding-auth", file: "src/middleware/auth.js", line: 42, severity: "high", source: "ai", category: "security", title: "Authorization check can be bypassed", body: "The fallback path accepts a decoded token without checking its audience.", suggestion: "if (payload.aud !== env.AUTH_AUDIENCE) throw new UnauthorizedError();", confidence: 96, posted: true },
   lint: { _id: "finding-lint", file: "src/middleware/auth.js", line: 51, severity: "high", source: "lint", category: "maintainability", title: "Static analysis: no-undef", body: "'sessionAudience' is not defined.", suggestion: "", confidence: 100, posted: true },

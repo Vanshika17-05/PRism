@@ -6,6 +6,7 @@ import { env } from "./config/env.js";
 import { logger } from "./utils/logger.js";
 import bcrypt from "bcryptjs";
 import { User } from "./models/User.model.js";
+import { closeReviewQueue, startReviewWorker } from "./queues/review.queue.js";
 
 await connectDatabase();
 if (!env.USE_MOCKS && !(await User.exists({}))) {
@@ -14,11 +15,12 @@ if (!env.USE_MOCKS && !(await User.exists({}))) {
   logger.info({ email, password }, "Created demo user");
 } else if (env.USE_MOCKS) logger.info({ email: "demo@prism.dev", password: "prism-demo-2026" }, "Mock demo user ready");
 const server = http.createServer(createApp());
+startReviewWorker();
 server.listen(env.PORT, "0.0.0.0", () => logger.info({ port: env.PORT }, "PRism API listening"));
 
 async function shutdown(signal) {
   logger.info({ signal }, "Graceful shutdown started");
-  server.close(async () => { await mongoose.disconnect(); process.exit(0); });
+  server.close(async () => { await closeReviewQueue(); await mongoose.disconnect(); process.exit(0); });
   setTimeout(() => process.exit(1), 10_000).unref();
 }
 process.on("SIGTERM", () => shutdown("SIGTERM"));

@@ -12,6 +12,20 @@ services:
       timeout: 5s
       retries: 10
 
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    ports:
+      - "6379:6379"
+    volumes:
+      - prism_redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
   python-service:
     build:
       context: .
@@ -43,6 +57,7 @@ services:
       MONGODB_URI: mongodb://mongo:27017/prism
       PYTHON_SERVICE_URL: http://python-service:8100
       OLLAMA_BASE_URL: http://ollama:11434
+      REDIS_URL: redis://redis:6379
     ports:
       - "4100:4100"
     depends_on:
@@ -52,8 +67,11 @@ services:
         condition: service_started
       ollama:
         condition: service_started
+      redis:
+        condition: service_healthy
 
 volumes:
   prism_mongo:
   prism_chroma:
   prism_ollama:
+  prism_redis:

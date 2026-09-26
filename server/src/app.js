@@ -10,6 +10,7 @@ import { webhookRouter } from "./routes/webhook.routes.js";
 import { reviewRouter } from "./routes/review.routes.js";
 import { repoRouter } from "./routes/repo.routes.js";
 import { authRouter } from "./routes/auth.routes.js";
+import { failedReviewRouter } from "./routes/failed-review.routes.js";
 import { authMiddleware } from "./middleware/auth.js";
 import { notFound } from "./middleware/notFound.js";
 import { errorHandler } from "./middleware/errorHandler.js";
@@ -23,6 +24,7 @@ export function createApp() {
   app.use("/api", rateLimit({ windowMs: 60_000, limit: 120, standardHeaders: "draft-8", legacyHeaders: false }));
   app.use("/api/health", healthRouter); app.use("/api/auth", authRouter);
   app.use("/api/reviews", authMiddleware, reviewRouter); app.use("/api/repos", authMiddleware, repoRouter);
+  app.use("/api/failed-reviews", authMiddleware, failedReviewRouter);
   app.use(notFound); app.use(errorHandler);
   return app;
 }

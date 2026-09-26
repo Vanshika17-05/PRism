@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { env } from "../config/env.js";
 import { buildReviewPrompt } from "../utils/prompts.js";
+import { aiBucket } from "./rate-limit.service.js";
 
 const resultSchema = z.object({
   summary: z.string().min(1).max(5000),
@@ -20,6 +21,7 @@ function extractJson(text) {
 }
 
 export async function reviewWithAi(context) {
+  await aiBucket.acquire();
   const controller = new AbortController(); const timer = setTimeout(() => controller.abort(), env.AI_TIMEOUT_MS);
   try {
     const response = await fetch(`${env.OLLAMA_BASE_URL}/api/generate`, { method: "POST", signal: controller.signal, headers: { "content-type": "application/json" }, body: JSON.stringify({ model: env.OLLAMA_MODEL, prompt: buildReviewPrompt(context), stream: false, format: "json", options: { temperature: 0.2 } }) });

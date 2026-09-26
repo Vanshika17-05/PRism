@@ -14,7 +14,11 @@ const schema = z.object({
   OLLAMA_BASE_URL: z.string().url().default("http://127.0.0.1:11434"),
   OLLAMA_MODEL: z.string().min(1).default("qwen2.5-coder:7b"),
   PYTHON_SERVICE_URL: z.string().url().default("http://127.0.0.1:8100"),
-  AI_TIMEOUT_MS: z.coerce.number().int().min(10_000).max(300_000).default(120_000)
+  AI_TIMEOUT_MS: z.coerce.number().int().min(10_000).max(300_000).default(120_000),
+  REDIS_URL: z.string().url().default("redis://127.0.0.1:6379"),
+  REVIEW_CONCURRENCY: z.coerce.number().int().min(1).max(20).default(2),
+  GITHUB_RATE_LIMIT_PER_MINUTE: z.coerce.number().int().min(1).default(60),
+  AI_RATE_LIMIT_PER_MINUTE: z.coerce.number().int().min(1).default(12)
 }).superRefine((values, context) => {
   if (values.USE_MOCKS) return;
   for (const key of ["MONGODB_URI", "GITHUB_APP_ID", "GITHUB_APP_PRIVATE_KEY", "GITHUB_WEBHOOK_SECRET"]) {
