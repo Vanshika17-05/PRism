@@ -30,7 +30,7 @@ function Suggestion({ text }) {
   }
   return (
     <div className="relative mt-4">
-      <pre className="overflow-auto rounded-[18px] bg-[#0B0C0F] p-4 pr-12 text-xs text-[#C7D2FE]">
+      <pre className="overflow-auto rounded-[18px] bg-[#16100C] p-4 pr-12 text-xs text-[#F0B48F]">
         <code>{text}</code>
       </pre>
       <button

@@ -3,13 +3,13 @@
 @tailwind utilities;
 
 :root, :root[data-theme="light"] {
-  --bg:#F7F8FA; --surface:#FFFFFF; --surface-clay:#ECEEF2; --surface-alt:#E1E4EA; --border:rgba(79,70,229,.16);
-  --accent:#4F46E5; --accent-dark:#4338CA; --accent-light:#A5B4FC; --accent-glow:rgba(79,70,229,.22);
-  --text-primary:#14161C; --text-muted:#6B7280; --clay-shadow-dark:rgba(20,20,30,.08); --clay-shadow-light:rgba(255,255,255,.9);
-  --severity-high:#FF6B6B; --severity-med:#FFB84D; --severity-low:#4DA6FF; --radius:24px;
+  --bg:#FAF6F2; --surface:#FFFFFF; --surface-clay:#F0E4DA; --surface-alt:#E8D7CA; --border:rgba(181,80,46,.18);
+  --accent:#B5502E; --accent-dark:#8F3D22; --accent-light:#E0916D; --accent-glow:rgba(181,80,46,.24);
+  --text-primary:#2B1A12; --text-muted:#8A7466; --clay-shadow-dark:rgba(181,80,46,.15); --clay-shadow-light:rgba(255,255,255,.9);
+  --severity-high:#E5484D; --severity-med:#EAB308; --severity-low:#4DA6FF; --radius:24px;
   font-family:"Inter",sans-serif; color:var(--text-primary); background:var(--bg); font-synthesis:none;
 }
-:root[data-theme="dark"] { --bg:#0B0C0F; --surface:#16171C; --surface-clay:#1E2027; --surface-alt:#282B35; --border:rgba(129,140,248,.16); --accent:#818CF8; --accent-dark:#6366F1; --accent-light:#C7D2FE; --accent-glow:rgba(129,140,248,.2); --text-primary:#F3F4F6; --text-muted:#9CA3AF; --clay-shadow-dark:rgba(0,0,0,.5); --clay-shadow-light:rgba(129,140,248,.06); }
+:root[data-theme="dark"] { --bg:#16100C; --surface:#201712; --surface-clay:#2B1E17; --surface-alt:#38261D; --border:rgba(217,119,72,.17); --accent:#D97748; --accent-dark:#B5502E; --accent-light:#F0B48F; --accent-glow:rgba(217,119,72,.22); --text-primary:#F7EFE8; --text-muted:#A6907F; --severity-high:#F87171; --severity-med:#FACC15; --severity-low:#60A5FA; --clay-shadow-dark:rgba(0,0,0,.45); --clay-shadow-light:rgba(217,119,72,.08); }
 *{box-sizing:border-box} html{scroll-behavior:smooth} body{margin:0;min-width:320px;min-height:100vh;background:var(--bg);transition:background .2s,color .2s} button,input,select,textarea{font:inherit} button{cursor:pointer} a{color:inherit} ::selection{background:var(--accent-glow)}
 @layer components {
   .clay-card{position:relative;border:1px solid var(--border);border-radius:var(--radius);background:linear-gradient(145deg,var(--surface),var(--surface-clay));box-shadow:8px 8px 16px var(--clay-shadow-dark),-8px -8px 16px var(--clay-shadow-light),inset 1px 1px 2px color-mix(in srgb,var(--clay-shadow-light) 55%,transparent)}
