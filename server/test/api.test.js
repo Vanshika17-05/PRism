@@ -1,18 +1,19 @@
 import assert from "node:assert/strict";
 import crypto from "node:crypto";
 import test from "node:test";
+import jwt from "jsonwebtoken";
 import { createApp } from "../src/app.js";
 import { env } from "../src/config/env.js";
 import { enqueueReview } from "../src/queues/review.queue.js";
 import { mockFailedReviews } from "../src/data/mockData.js";
 
 async function withServer(run) { const server = createApp().listen(0, "127.0.0.1"); await new Promise((resolve) => server.once("listening", resolve)); try { await run(`http://127.0.0.1:${server.address().port}`); } finally { await new Promise((resolve) => server.close(resolve)); } }
+const token = jwt.sign({ _id: "test-user", username: "test-engineer", name: "Test Engineer" }, env.JWT_SECRET, { expiresIn: "5m" });
 
 test("health, auth, and protected dashboard API", () => withServer(async (base) => {
   const health = await fetch(`${base}/api/health`); assert.equal(health.status, 200); assert.match(health.headers.get("x-request-id"), /^[0-9a-f-]{36}$/); assert.equal((await health.json()).status, "ok");
   assert.equal((await fetch(`${base}/api/repos`)).status, 401);
-  const login = await fetch(`${base}/api/auth/login`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email: "demo@prism.dev", password: "prism-demo-2026" }) });
-  assert.equal(login.status, 200); const { token } = await login.json();
+  const config = await (await fetch(`${base}/api/auth/config`)).json(); assert.equal(config.githubConfigured, false);
   const repos = await fetch(`${base}/api/repos`, { headers: { authorization: `Bearer ${token}` } }); assert.equal(repos.status, 200); const reposBody = await repos.json(); assert.equal(reposBody.repositories.length, 3);
   const metrics = await fetch(`${base}/api/metrics`, { headers: { authorization: `Bearer ${token}` } }); assert.equal(metrics.status, 200); const metricsBody = await metrics.json(); assert.equal(metricsBody.queue.depth, 0); assert.equal(typeof metricsBody.errorRate, "number");
   const budget = await fetch(`${base}/api/repos/${reposBody.repositories[0]._id}/settings`, { method: "PATCH", headers: { authorization: `Bearer ${token}`, "content-type": "application/json" }, body: JSON.stringify({ monthlyTokenBudget: 600000 }) }); assert.equal(budget.status, 200); assert.equal((await budget.json()).repository.settings.monthlyTokenBudget, 600000);
@@ -39,8 +40,7 @@ test("failed review reaches dead letter after three attempts and can be retried"
   mockFailedReviews.length = 0;
   await enqueueReview({ repoId: "66f000000000000000000000001", prNumber: 999, headSha: "forced-failure", deliveryId: "dead-letter-test", forceFailure: true, failureMessage: "Python service unavailable" }, { processNow: true });
   assert.equal(mockFailedReviews.length, 1); assert.equal(mockFailedReviews[0].attemptsMade, 3);
-  const login = await fetch(`${base}/api/auth/login`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email: "demo@prism.dev", password: "prism-demo-2026" }) });
-  const { token } = await login.json(); const headers = { authorization: `Bearer ${token}` };
+  const headers = { authorization: `Bearer ${token}` };
   const listed = await (await fetch(`${base}/api/failed-reviews`, { headers })).json(); assert.equal(listed.pagination.total, 1); assert.match(listed.items[0].error, /Python service unavailable/);
   const retried = await fetch(`${base}/api/failed-reviews/${listed.items[0]._id}/retry`, { method: "POST", headers }); assert.equal(retried.status, 202);
   assert.equal(mockFailedReviews.length, 0);

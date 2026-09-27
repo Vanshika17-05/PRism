@@ -1,39 +1,53 @@
-import bcrypt from "bcryptjs";
+import crypto from "node:crypto";
 import jwt from "jsonwebtoken";
-import { z } from "zod";
 import { env } from "../config/env.js";
 import { User } from "../models/User.model.js";
 
-const credentialsSchema = z.object({
-  email: z.string().email().transform((value) => value.toLowerCase()),
-  password: z.string().min(8).max(128),
-  name: z.string().min(2).max(80).optional()
-});
-const mockUsers = [{ _id: "mock-demo-user", email: "demo@prism.dev", name: "Demo Engineer", password: "prism-demo-2026" }];
+const sessionCookie = "prism_session";
+const stateCookie = "prism_oauth_state";
+const cookieBase = { httpOnly: true, sameSite: "lax", secure: env.NODE_ENV === "production", path: "/" };
 
-function publicUser(user) { return { _id: String(user._id), email: user.email, name: user.name }; }
+function parseCookies(req) {
+  return Object.fromEntries((req.get("cookie") || "").split(";").map((part) => part.trim().split(/=(.*)/s)).filter(([key]) => key).map(([key, value]) => [key, decodeURIComponent(value || "")]));
+}
+
+function publicUser(user) {
+  return { _id: String(user._id), githubId: user.githubId, username: user.username, avatarUrl: user.avatarUrl, githubUrl: user.githubUrl, email: user.email || "", name: user.name };
+}
+
 function issueToken(user) { return jwt.sign(publicUser(user), env.JWT_SECRET, { expiresIn: "7d" }); }
+export const oauthConfigured = () => Boolean(env.GITHUB_APP_CLIENT_ID && env.GITHUB_APP_CLIENT_SECRET);
+export const readSessionCookie = (req) => parseCookies(req)[sessionCookie] || "";
 
-export async function register(req, res) {
-  const input = credentialsSchema.extend({ name: z.string().min(2).max(80) }).parse(req.body);
-  if (env.USE_MOCKS) {
-    if (mockUsers.some((user) => user.email === input.email)) return res.status(409).json({ error: "Email is already registered" });
-    const user = { _id: `mock-${Date.now()}`, email: input.email, name: input.name, password: input.password };
-    mockUsers.push(user);
-    return res.status(201).json({ user: publicUser(user), token: issueToken(user) });
-  }
-  if (await User.exists({ email: input.email })) return res.status(409).json({ error: "Email is already registered" });
-  const user = await User.create({ email: input.email, name: input.name, passwordHash: await bcrypt.hash(input.password, 12) });
-  return res.status(201).json({ user: publicUser(user), token: issueToken(user) });
+export function authConfig(_req, res) { res.json({ githubConfigured: oauthConfigured() }); }
+
+export function beginGithubAuth(_req, res) {
+  if (!oauthConfigured()) return res.status(503).json({ error: "GitHub sign-in isn't configured yet" });
+  const state = crypto.randomBytes(24).toString("hex");
+  res.cookie(stateCookie, state, { ...cookieBase, maxAge: 10 * 60_000 });
+  const query = new URLSearchParams({ client_id: env.GITHUB_APP_CLIENT_ID, redirect_uri: `${env.APP_URL}/api/auth/github/callback`, scope: "read:user user:email", state });
+  return res.redirect(`https://github.com/login/oauth/authorize?${query}`);
 }
 
-export async function login(req, res) {
-  const input = credentialsSchema.parse(req.body);
-  const user = env.USE_MOCKS ? mockUsers.find((item) => item.email === input.email) : await User.findOne({ email: input.email });
-  const valid = user && (env.USE_MOCKS ? user.password === input.password : await bcrypt.compare(input.password, user.passwordHash));
-  if (!valid) return res.status(401).json({ error: "Invalid email or password" });
-  return res.json({ user: publicUser(user), token: issueToken(user) });
+export async function githubCallback(req, res) {
+  if (!oauthConfigured()) return res.redirect("/login?error=not-configured");
+  const expectedState = parseCookies(req)[stateCookie];
+  const receivedState = Buffer.from(String(req.query.state || "")); const storedState = Buffer.from(expectedState || "");
+  if (!req.query.code || !receivedState.length || receivedState.length !== storedState.length || !crypto.timingSafeEqual(receivedState, storedState)) return res.redirect("/login?error=invalid-state");
+  const tokenResponse = await fetch("https://github.com/login/oauth/access_token", { method: "POST", headers: { accept: "application/json", "content-type": "application/json" }, body: JSON.stringify({ client_id: env.GITHUB_APP_CLIENT_ID, client_secret: env.GITHUB_APP_CLIENT_SECRET, code: req.query.code, redirect_uri: `${env.APP_URL}/api/auth/github/callback` }) });
+  const tokenPayload = await tokenResponse.json();
+  if (!tokenResponse.ok || !tokenPayload.access_token) return res.redirect("/login?error=oauth-failed");
+  const headers = { authorization: `Bearer ${tokenPayload.access_token}`, accept: "application/vnd.github+json", "user-agent": "PRism" };
+  const [profileResponse, emailsResponse] = await Promise.all([fetch("https://api.github.com/user", { headers }), fetch("https://api.github.com/user/emails", { headers })]);
+  if (!profileResponse.ok) return res.redirect("/login?error=profile-failed");
+  const profile = await profileResponse.json(); const emails = emailsResponse.ok ? await emailsResponse.json() : [];
+  const email = profile.email || emails.find((item) => item.primary && item.verified)?.email || "";
+  const identity = { githubId: profile.id, username: profile.login, avatarUrl: profile.avatar_url, githubUrl: profile.html_url, email, name: profile.name || profile.login, githubAccessToken: tokenPayload.access_token };
+  // Mock infrastructure still performs genuine GitHub OAuth; only persistence is skipped when MongoDB is intentionally disabled.
+  const user = env.USE_MOCKS ? { ...identity, _id: `github-${profile.id}` } : await User.findOneAndUpdate({ githubId: profile.id }, identity, { upsert: true, new: true, setDefaultsOnInsert: true });
+  res.clearCookie(stateCookie, cookieBase); res.cookie(sessionCookie, issueToken(user), { ...cookieBase, maxAge: 7 * 24 * 60 * 60_000 });
+  return res.redirect("/dashboard/overview");
 }
 
-export function logout(_req, res) { return res.status(204).end(); }
+export function logout(_req, res) { res.clearCookie(sessionCookie, cookieBase); return res.status(204).end(); }
 export function me(req, res) { return res.json({ user: req.user }); }

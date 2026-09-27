@@ -8,7 +8,8 @@
     "dev:server": "pnpm --filter @prism/server dev",
     "dev:client": "pnpm --filter @prism/client dev",
     "dev:python": "python-service\\.venv\\Scripts\\python.exe -m uvicorn app.main:app --app-dir python-service --reload --port 8100",
-    "start": "npm run start --workspace server",
+    "build": "pnpm --filter @prism/client build",
+    "start": "pnpm build && pnpm --filter @prism/server start",
     "test": "npm run test --workspace server"
   }
 }

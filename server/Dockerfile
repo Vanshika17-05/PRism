@@ -1,3 +1,12 @@
+FROM node:22-alpine AS build
+WORKDIR /app
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
+COPY server/package.json server/package.json
+COPY client/package.json client/package.json
+RUN corepack enable && pnpm install --frozen-lockfile
+COPY client ./client
+RUN pnpm --filter @prism/client build
+
 FROM node:22-alpine AS dependencies
 WORKDIR /app
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
@@ -12,6 +21,7 @@ RUN addgroup -S prism && adduser -S prism -G prism
 COPY --from=dependencies --chown=prism:prism /app/node_modules ./node_modules
 COPY --from=dependencies --chown=prism:prism /app/server/node_modules ./server/node_modules
 COPY --chown=prism:prism server ./server
+COPY --from=build --chown=prism:prism /app/client/dist ./client/dist
 USER prism
 EXPOSE 4100
 WORKDIR /app/server

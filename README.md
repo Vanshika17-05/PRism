@@ -16,23 +16,18 @@ MongoDB <- repositories, users, reviews -> React dashboard
 
 Node owns authentication, GitHub App integration, Ollama calls, persistence, API orchestration, and ESLint analysis for JavaScript/TypeScript. Python deliberately owns local vector similarity and Python static metrics: Chroma remembers related findings and learned non-issues; Radon measures complexity and Pyflakes reports deterministic errors. Python enrichment is optional at runtime—if it is unavailable, the GitHub review still completes.
 
-## Local demo (no credentials required)
+## Run locally from one link
 
 Requirements: Node.js 22+ and pnpm.
 
 ```bash
 pnpm install
-pnpm dev
+pnpm start
 ```
 
-Open `http://localhost:5173` and sign in with:
+Open `http://localhost:4100`. Express serves both the compiled React application and `/api` from this single origin. Configure `GITHUB_APP_CLIENT_ID`, `GITHUB_APP_CLIENT_SECRET`, and set the OAuth callback URL to `http://localhost:4100/api/auth/github/callback`. If these credentials are absent, the login page clearly reports that GitHub sign-in is not configured; there is no fake password fallback.
 
-```text
-demo@prism.dev
-prism-demo-2026
-```
-
-The checked-in examples default to `USE_MOCKS=true`; local `.env` files are ignored. Mock mode provides realistic repositories, findings, analytics, vector-memory badges, and file complexity values without MongoDB, GitHub, Ollama, or any paid API.
+The checked-in examples default to `USE_MOCKS=true`; local `.env` files are ignored. Mock infrastructure mode provides realistic repository and review data, while authentication still uses real GitHub OAuth.
 
 Health check:
 
@@ -68,6 +63,9 @@ Copy `server/.env.example` to `server/.env`, set `USE_MOCKS=false`, and configur
 - `REDIS_URL` (local Redis or a Redis Cloud free-tier URL)
 - `REVIEW_CONCURRENCY` (defaults to `2`)
 - `CLIENT_URL`
+- `APP_URL` (the single public origin, such as `http://localhost:4100`)
+- `GITHUB_APP_CLIENT_ID`
+- `GITHUB_APP_CLIENT_SECRET`
 - `PORT`
 
 The GitHub App requires **Pull requests: read/write**, **Contents: read**, and **Metadata: read**. Subscribe it to pull request, installation, and installation-repositories events. Point its webhook to `/api/webhooks/github`.
@@ -77,8 +75,9 @@ The GitHub App requires **Pull requests: read/write**, **Contents: read**, and *
 Public:
 
 - `GET /api/health`
-- `POST /api/auth/register`
-- `POST /api/auth/login`
+- `GET /api/auth/config`
+- `GET /api/auth/github`
+- `GET /api/auth/github/callback`
 - `POST /api/webhooks/github`
 
 JWT protected:
@@ -123,7 +122,7 @@ Docker Compose is optional and starts MongoDB, Redis, Ollama, the API, and the P
 - Isolated manifest-only dependency auditing for changed npm lockfiles
 - Delivery and commit-level idempotency
 - Diff size/binary/lockfile filtering and valid-line verification
-- 7-day signed JWT sessions and bcrypt password hashes
+- GitHub OAuth with CSRF state validation and 7-day JWTs in HTTP-only cookies
 - Ollama JSON mode and schema validation with no paid API calls
 - Graceful degradation when the Python enrichment service is unavailable
 - Parallel AI and deterministic lint analysis with explicit source attribution
