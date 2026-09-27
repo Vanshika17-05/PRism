@@ -20,6 +20,7 @@ jobs:
     env:
       NODE_ENV: test
       USE_MOCKS: "true"
+      GITHUB_WEBHOOK_SECRET: ci-webhook-secret-not-for-production
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
