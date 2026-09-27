@@ -12,6 +12,7 @@ import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 
 const Page = ({ children }) => (
   <motion.div
+    className="w-full min-w-0"
     initial={{ opacity: 0, y: 5 }}
     animate={{ opacity: 1, y: 0 }}
     exit={{ opacity: 0, y: -4 }}

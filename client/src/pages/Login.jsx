@@ -15,22 +15,22 @@ export default function Login() {
   });
   const error = params.get("error");
   return (
-    <div className="relative grid min-h-screen place-items-center overflow-hidden bg-bg px-5 py-16 text-primary">
+    <div className="relative flex min-h-[100dvh] w-full min-w-0 items-center justify-center overflow-hidden bg-bg px-5 py-20 text-primary">
       <GradientMeshBackground />
       <Link
         to="/"
-        className="absolute left-5 top-5 flex items-center gap-2 text-sm font-semibold text-muted"
+        className="absolute left-5 top-5 z-20 flex items-center gap-2 text-sm font-semibold text-muted"
       >
         <ArrowLeft size={17} /> Back home
       </Link>
       <button
-        className="clay-icon absolute right-5 top-5"
+        className="clay-icon absolute right-5 top-5 z-20"
         onClick={toggleTheme}
         aria-label="Toggle theme"
       >
         {theme === "light" ? <Moon size={17} /> : <Sun size={17} />}
       </button>
-      <section className="clay-card relative z-10 w-full max-w-md p-8 text-center sm:p-10">
+      <section className="clay-card relative z-10 w-[min(100%,28rem)] min-w-0 shrink-0 p-8 text-center sm:p-10">
         <span className="logo-mark mx-auto">
           <i />
           <i />
