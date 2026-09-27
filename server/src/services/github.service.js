@@ -31,6 +31,21 @@ export async function loadFileContents(octokit, owner, repo, ref, files) {
   })).then((items) => items.filter(Boolean));
 }
 
+export async function loadDependencyManifests(octokit, owner, repo, ref, remoteFiles) {
+  const changed = new Set(remoteFiles.map((file) => file.filename));
+  const targets = new Set();
+  if (changed.has("package.json") || changed.has("package-lock.json")) { targets.add("package.json"); targets.add("package-lock.json"); }
+  for (const filename of changed) if (/(^|\/)(requirements[^/]*\.txt|pyproject\.toml|poetry\.lock)$/i.test(filename)) targets.add(filename);
+  return Promise.all([...targets].map(async (filename) => {
+    try {
+      await githubBucket.acquire();
+      const response = await octokit.rest.repos.getContent({ owner, repo, path: filename, ref });
+      if (Array.isArray(response.data) || response.data.type !== "file" || !response.data.content) return null;
+      return { path: filename, content: Buffer.from(response.data.content, "base64").toString("utf8") };
+    } catch { return null; }
+  })).then((items) => items.filter(Boolean));
+}
+
 function inlineBody(finding) {
   const suggestion = finding.suggestion ? `\n\n\`\`\`suggestion\n${finding.suggestion}\n\`\`\`` : "";
   return `**${finding.severity.toUpperCase()} · ${finding.category} — ${finding.title}**\n\n${finding.body}${suggestion}`;

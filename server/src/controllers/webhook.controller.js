@@ -3,6 +3,7 @@ import { Review } from "../models/Review.model.js";
 import { enqueueReview } from "../queues/review.queue.js";
 import { logger } from "../utils/logger.js";
 import { env } from "../config/env.js";
+import { currentRequestId } from "../utils/requestContext.js";
 
 const reviewActions = new Set(["opened", "synchronize", "reopened", "ready_for_review"]);
 
@@ -29,7 +30,7 @@ async function processWebhook({ payload, event, deliveryId }) {
   const duplicate = await Review.exists({ $or: [{ deliveryId }, { repository: repository.id, prNumber: payload.pull_request.number, headSha: payload.pull_request.head.sha }] });
   if (duplicate) return;
   const pullRequest = payload.pull_request;
-  await enqueueReview({ repoId: String(repository.id), prNumber: pullRequest.number, headSha: pullRequest.head.sha, deliveryId });
+  await enqueueReview({ repoId: String(repository.id), prNumber: pullRequest.number, headSha: pullRequest.head.sha, deliveryId, requestId: currentRequestId(), enqueuedAt: Date.now() });
   logger.info({ deliveryId, repoId: repository.id, prNumber: pullRequest.number }, "Review queued");
 }
 

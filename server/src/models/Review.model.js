@@ -3,8 +3,8 @@ import mongoose from "mongoose";
 const findingSchema = new mongoose.Schema({
   file: { type: String, required: true }, line: { type: Number, required: true },
   severity: { type: String, enum: ["low", "medium", "high"], required: true },
-  source: { type: String, enum: ["ai", "lint"], default: "ai" },
-  category: { type: String, enum: ["bug", "security", "performance", "style", "maintainability"], required: true },
+  source: { type: String, enum: ["ai", "lint", "audit"], default: "ai" },
+  category: { type: String, enum: ["bug", "security", "performance", "style", "maintainability", "dependency-vulnerability"], required: true },
   title: { type: String, required: true }, body: { type: String, required: true }, suggestion: { type: String, default: "" },
   confidence: { type: Number, min: 0, max: 100, default: 0 }, similarToReviewId: { type: String, default: "" },
   similarity: { type: Number, min: 0, max: 1 }, dismissed: { type: Boolean, default: false }, dismissalReason: { type: String, default: "" }, posted: { type: Boolean, default: false }
@@ -22,8 +22,8 @@ const reviewSchema = new mongoose.Schema({
   summary: { type: String, default: "" }, overallRating: { type: String, enum: ["approve", "comment", "request_changes"], default: "comment" },
   findings: { type: [findingSchema], default: [] },
   fileComplexity: { type: [complexitySchema], default: [] },
-  stats: { filesReviewed: { type: Number, default: 0 }, filesSkipped: { type: Number, default: 0 }, findingsCount: { type: Number, default: 0 }, suppressedCount: { type: Number, default: 0 }, tokensIn: { type: Number, default: 0 }, tokensOut: { type: Number, default: 0 }, durationMs: { type: Number, default: 0 } },
-  githubReviewId: Number, error: { type: String, default: "" }
+  stats: { filesReviewed: { type: Number, default: 0 }, filesSkipped: { type: Number, default: 0 }, findingsCount: { type: Number, default: 0 }, suppressedCount: { type: Number, default: 0 }, tokensIn: { type: Number, default: 0 }, tokensOut: { type: Number, default: 0 }, durationMs: { type: Number, default: 0 }, queueWaitMs: { type: Number, default: 0 } },
+  budgetExceeded: { type: Boolean, default: false }, githubReviewId: Number, error: { type: String, default: "" }
 }, { timestamps: true });
 
 reviewSchema.index({ repository: 1, createdAt: -1 });

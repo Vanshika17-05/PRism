@@ -7,6 +7,7 @@ import { getInstallationOctokit } from "../services/github.service.js";
 import { githubBucket } from "../services/rate-limit.service.js";
 import { logger } from "../utils/logger.js";
 import { mockFailedReviews, mockRepositories } from "../data/mockData.js";
+import { requestContext } from "../utils/requestContext.js";
 
 export const REVIEW_QUEUE_NAME = "reviewQueue";
 const defaultJobOptions = { attempts: 3, backoff: { type: "exponential", delay: 5_000 }, removeOnComplete: 100, removeOnFail: false };
@@ -37,7 +38,7 @@ export async function runReviewJob(data) {
   await githubBucket.acquire();
   const { data: pullRequest } = await octokit.rest.pulls.get({ owner: repository.owner, repo: repository.name, pull_number: data.prNumber });
   if (pullRequest.head.sha !== data.headSha) throw new Error("Queued head SHA is stale; a newer PR revision is available");
-  return processPullRequestReview({ repository, pullRequest, deliveryId: data.deliveryId });
+  return processPullRequestReview({ repository, pullRequest, deliveryId: data.deliveryId, queueWaitMs: data.enqueuedAt ? Math.max(0, Date.now() - data.enqueuedAt) : 0 });
 }
 
 export async function enqueueReview(payload, options = {}) {
@@ -55,7 +56,7 @@ export async function enqueueReview(payload, options = {}) {
 
 export function startReviewWorker() {
   if (env.USE_MOCKS || worker) return worker;
-  worker = new Worker(REVIEW_QUEUE_NAME, (job) => runReviewJob(job.data), { connection: redisConnection(), concurrency: env.REVIEW_CONCURRENCY });
+  worker = new Worker(REVIEW_QUEUE_NAME, (job) => requestContext.run({ requestId: job.data.requestId }, () => runReviewJob(job.data)), { connection: redisConnection(), concurrency: env.REVIEW_CONCURRENCY });
   worker.on("completed", (job) => logger.info({ jobId: job.id }, "Review queue job completed"));
   worker.on("failed", async (job, error) => {
     logger.error({ err: error, jobId: job?.id, attemptsMade: job?.attemptsMade }, "Review queue attempt failed");
@@ -70,4 +71,10 @@ export function startReviewWorker() {
 
 export async function closeReviewQueue() {
   await worker?.close(); await queue?.close(); worker = undefined; queue = undefined;
+}
+
+export async function reviewQueueCounts() {
+  if (env.USE_MOCKS) return { waiting: 0, active: 0, delayed: 0, depth: 0 };
+  const counts = await getReviewQueue().getJobCounts("waiting", "active", "delayed");
+  return { ...counts, depth: counts.waiting + counts.active + counts.delayed };
 }

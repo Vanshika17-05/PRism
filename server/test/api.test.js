@@ -9,11 +9,13 @@ import { mockFailedReviews } from "../src/data/mockData.js";
 async function withServer(run) { const server = createApp().listen(0, "127.0.0.1"); await new Promise((resolve) => server.once("listening", resolve)); try { await run(`http://127.0.0.1:${server.address().port}`); } finally { await new Promise((resolve) => server.close(resolve)); } }
 
 test("health, auth, and protected dashboard API", () => withServer(async (base) => {
-  const health = await fetch(`${base}/api/health`); assert.equal(health.status, 200); assert.equal((await health.json()).status, "ok");
+  const health = await fetch(`${base}/api/health`); assert.equal(health.status, 200); assert.match(health.headers.get("x-request-id"), /^[0-9a-f-]{36}$/); assert.equal((await health.json()).status, "ok");
   assert.equal((await fetch(`${base}/api/repos`)).status, 401);
   const login = await fetch(`${base}/api/auth/login`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email: "demo@prism.dev", password: "prism-demo-2026" }) });
   assert.equal(login.status, 200); const { token } = await login.json();
-  const repos = await fetch(`${base}/api/repos`, { headers: { authorization: `Bearer ${token}` } }); assert.equal(repos.status, 200); assert.equal((await repos.json()).repositories.length, 3);
+  const repos = await fetch(`${base}/api/repos`, { headers: { authorization: `Bearer ${token}` } }); assert.equal(repos.status, 200); const reposBody = await repos.json(); assert.equal(reposBody.repositories.length, 3);
+  const metrics = await fetch(`${base}/api/metrics`, { headers: { authorization: `Bearer ${token}` } }); assert.equal(metrics.status, 200); const metricsBody = await metrics.json(); assert.equal(metricsBody.queue.depth, 0); assert.equal(typeof metricsBody.errorRate, "number");
+  const budget = await fetch(`${base}/api/repos/${reposBody.repositories[0]._id}/settings`, { method: "PATCH", headers: { authorization: `Bearer ${token}`, "content-type": "application/json" }, body: JSON.stringify({ monthlyTokenBudget: 600000 }) }); assert.equal(budget.status, 200); assert.equal((await budget.json()).repository.settings.monthlyTokenBudget, 600000);
   const reviews = await (await fetch(`${base}/api/reviews`, { headers: { authorization: `Bearer ${token}` } })).json();
   assert.deepEqual(new Set(reviews.items[0].findings.map((finding) => finding.source)), new Set(["ai", "lint"]));
   const finding = reviews.items[0].findings[0];

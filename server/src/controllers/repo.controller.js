@@ -12,10 +12,13 @@ const settingsSchema = z.object({
   severityThreshold: z.enum(["low", "medium", "high"]).optional(),
   persona: z.enum(["strict", "balanced", "friendly"]).optional(),
   customRules: z.array(z.string().min(1).max(300)).max(50).optional(),
+  monthlyTokenBudget: z.number().int().min(0).max(100_000_000).optional(),
   isActive: z.boolean().optional()
 });
 
 export async function listRepos(_req, res) {
+  const month = new Date().toISOString().slice(0, 7);
+  if (!env.USE_MOCKS) await Repository.updateMany({ "settings.budgetMonth": { $ne: month } }, { $set: { "settings.tokensUsedThisMonth": 0, "settings.budgetMonth": month } });
   if (env.USE_MOCKS) return res.json({ repositories: mockRepositories });
   res.json({ repositories: await Repository.find().sort({ fullName: 1 }).lean() });
 }

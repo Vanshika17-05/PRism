@@ -94,6 +94,7 @@ JWT protected:
 - `GET /api/failed-reviews`
 - `POST /api/failed-reviews/:id/retry`
 - `DELETE /api/failed-reviews/:id`
+- `GET /api/metrics`
 
 Python service:
 
@@ -117,6 +118,9 @@ Docker Compose is optional and starts MongoDB, Redis, Ollama, the API, and the P
 - Immediate `202` acknowledgement with a BullMQ/Redis review queue
 - Three exponential-backoff attempts, MongoDB dead-letter storage, and dashboard retry/dismiss controls
 - Configurable worker concurrency and token-bucket limits around GitHub and local-AI calls
+- AsyncLocalStorage request IDs across webhook, queue worker, API, and structured logs
+- Per-repository monthly token budgets with deterministic-only fallback
+- Isolated manifest-only dependency auditing for changed npm lockfiles
 - Delivery and commit-level idempotency
 - Diff size/binary/lockfile filtering and valid-line verification
 - 7-day signed JWT sessions and bcrypt password hashes

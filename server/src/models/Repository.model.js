@@ -12,7 +12,10 @@ const repositorySchema = new mongoose.Schema({
     maxFilesPerReview: { type: Number, min: 1, max: 100, default: 20 },
     severityThreshold: { type: String, enum: ["low", "medium", "high"], default: "low" },
     persona: { type: String, enum: ["strict", "balanced", "friendly"], default: "balanced" },
-    customRules: { type: [String], default: [] }
+    customRules: { type: [String], default: [] },
+    monthlyTokenBudget: { type: Number, min: 0, max: 100_000_000, default: 500_000 },
+    tokensUsedThisMonth: { type: Number, min: 0, default: 0 },
+    budgetMonth: { type: String, default: () => new Date().toISOString().slice(0, 7) }
   }
 }, { timestamps: true });
 

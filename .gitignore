@@ -9,6 +9,7 @@ __pycache__/
 *.pyc
 .venv/
 python-service/data/
+/data/
 .DS_Store
 .idea/
 .vscode/

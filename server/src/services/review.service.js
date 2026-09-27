@@ -1,9 +1,11 @@
 import { Review } from "../models/Review.model.js";
+import { Repository } from "../models/Repository.model.js";
 import { buildReviewableFiles, validateFindings } from "./diff.service.js";
-import { getInstallationOctokit, listPullRequestFiles, loadFileContents, postReview } from "./github.service.js";
+import { getInstallationOctokit, listPullRequestFiles, loadDependencyManifests, loadFileContents, postReview } from "./github.service.js";
 import { reviewWithAi } from "./ai.service.js";
 import { analyzeComplexity, enrichFindingMemory } from "./python.service.js";
 import { lintFiles, lintResultsToFindings } from "./lint.service.js";
+import { auditDependencyFiles } from "./dependency-audit.service.js";
 
 const severityRank = { low: 1, medium: 2, high: 3 };
 
@@ -25,17 +27,27 @@ function summaryBody(summary, findings) {
   return `## PRism review\n\n${summary}\n\n| Severity | Findings |\n|---|---:|\n| High | ${counts.high} |\n| Medium | ${counts.medium} |\n| Low | ${counts.low} |\n\n<sub>Reviewed by PRism · AI suggestions should be verified by a human.</sub>`;
 }
 
-export async function processPullRequestReview({ repository, pullRequest, deliveryId }) {
+export async function processPullRequestReview({ repository, pullRequest, deliveryId, queueWaitMs = 0 }) {
   const startedAt = Date.now();
   let review;
   try {
+    const month = new Date().toISOString().slice(0, 7);
+    if (repository.settings.budgetMonth !== month) {
+      repository.settings.tokensUsedThisMonth = 0; repository.settings.budgetMonth = month; await repository.save();
+    }
+    const budgetExceeded = repository.settings.tokensUsedThisMonth >= repository.settings.monthlyTokenBudget;
     review = await Review.create({
       repository: repository.id, prNumber: pullRequest.number, prTitle: pullRequest.title, prUrl: pullRequest.html_url,
       prAuthor: pullRequest.user?.login || "unknown", headSha: pullRequest.head.sha, deliveryId, status: "processing"
     });
   } catch (error) {
-    if (error.code === 11000) return null;
-    throw error;
+    if (error.code === 11000) {
+      review = await Review.findOne({ repository: repository.id, prNumber: pullRequest.number, headSha: pullRequest.head.sha });
+      if (!review || review.status !== "failed") return review;
+      review.status = "processing"; review.error = ""; await review.save();
+    } else {
+      throw error;
+    }
   }
 
   try {
@@ -49,11 +61,14 @@ export async function processPullRequestReview({ repository, pullRequest, delive
     }
 
     const sourceFilesPromise = loadFileContents(octokit, repository.owner, repository.name, pullRequest.head.sha, reviewable);
+    const auditPromise = loadDependencyManifests(octokit, repository.owner, repository.name, pullRequest.head.sha, remoteFiles).then(auditDependencyFiles);
     // Static analysis starts before the local LLM call and runs concurrently so it does not add serial review latency.
     const complexityPromise = sourceFilesPromise.then(analyzeComplexity);
     const lintPromise = sourceFilesPromise.then(lintFiles);
     const results = [];
-    for (const group of batches(reviewable)) results.push(await reviewWithAi({ title: pullRequest.title, description: pullRequest.body, files: group, persona: repository.settings.persona, customRules: repository.settings.customRules }));
+    if (!budgetExceeded) for (const group of batches(reviewable)) results.push(await reviewWithAi({ title: pullRequest.title, description: pullRequest.body, files: group, persona: repository.settings.persona, customRules: repository.settings.customRules }));
+    const tokensUsed = results.reduce((sum, item) => sum + item.usage.input + item.usage.output, 0);
+    if (tokensUsed) await Repository.updateOne({ _id: repository.id }, { $inc: { "settings.tokensUsedThisMonth": tokensUsed } });
     const valid = validateFindings(results.flatMap((result) => result.findings.map((finding) => ({ ...finding, source: "ai" }))), reviewable);
     const threshold = severityRank[repository.settings.severityThreshold || "low"];
     const filtered = valid.filter((finding) => severityRank[finding.severity] >= threshold);
@@ -61,20 +76,21 @@ export async function processPullRequestReview({ repository, pullRequest, delive
     const memory = await enrichFindingMemory(repository.id, review.id, filtered);
     const lintResults = await lintPromise;
     const lintFindings = validateFindings(lintResultsToFindings(lintResults), reviewable);
-    const findings = [...memory.findings, ...lintFindings];
+    const auditFindings = await auditPromise;
+    const findings = [...memory.findings, ...lintFindings, ...auditFindings];
     const fileComplexity = await complexityPromise;
-    const summary = results.map((result) => result.summary).filter(Boolean).join("\n\n");
+    const summary = budgetExceeded ? "Monthly AI token budget reached. PRism ran deterministic static analysis only." : results.map((result) => result.summary).filter(Boolean).join("\n\n");
     const overallRating = findings.some((item) => item.severity === "high") ? "request_changes" : findings.length ? "comment" : "approve";
     const posted = await postReview(octokit, {
       owner: repository.owner, repo: repository.name, prNumber: pullRequest.number, headSha: pullRequest.head.sha,
       body: summaryBody(summary, findings), event: overallRating === "request_changes" ? "REQUEST_CHANGES" : overallRating === "approve" ? "APPROVE" : "COMMENT", findings
     });
-    review.status = "completed"; review.summary = summary; review.overallRating = overallRating;
+    review.status = "completed"; review.summary = summary; review.overallRating = overallRating; review.budgetExceeded = budgetExceeded;
     review.findings = findings.map((finding) => ({ ...finding, posted: true })); review.githubReviewId = posted.data.id;
     review.fileComplexity = fileComplexity;
     review.stats = {
       filesReviewed: reviewable.length, filesSkipped: skipped.length, findingsCount: findings.length, suppressedCount: memory.suppressedCount,
-      tokensIn: results.reduce((sum, item) => sum + item.usage.input, 0), tokensOut: results.reduce((sum, item) => sum + item.usage.output, 0), durationMs: Date.now() - startedAt
+      tokensIn: results.reduce((sum, item) => sum + item.usage.input, 0), tokensOut: results.reduce((sum, item) => sum + item.usage.output, 0), durationMs: Date.now() - startedAt, queueWaitMs
     };
     await review.save(); return review;
   } catch (error) {

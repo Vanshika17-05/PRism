@@ -14,7 +14,7 @@ export const mockRepositories = [
     name: "web-platform",
     installationId: 10101,
     isActive: true,
-    settings: { ignoredPaths: ["dist/**", "*.lock"], maxFilesPerReview: 20, severityThreshold: "low", persona: "balanced", customRules: [] },
+    settings: { ignoredPaths: ["dist/**", "*.lock"], maxFilesPerReview: 20, severityThreshold: "low", persona: "balanced", customRules: [], monthlyTokenBudget: 500000, tokensUsedThisMonth: 128400, budgetMonth: new Date().toISOString().slice(0, 7) },
     createdAt: daysAgo(52)
   },
   {
@@ -25,7 +25,7 @@ export const mockRepositories = [
     name: "api-gateway",
     installationId: 10101,
     isActive: true,
-    settings: { ignoredPaths: ["vendor/**"], maxFilesPerReview: 30, severityThreshold: "medium", persona: "strict", customRules: ["Flag endpoints that do not enforce authorization."] },
+    settings: { ignoredPaths: ["vendor/**"], maxFilesPerReview: 30, severityThreshold: "medium", persona: "strict", customRules: ["Flag endpoints that do not enforce authorization."], monthlyTokenBudget: 500000, tokensUsedThisMonth: 342100, budgetMonth: new Date().toISOString().slice(0, 7) },
     createdAt: daysAgo(38)
   },
   {
@@ -36,7 +36,7 @@ export const mockRepositories = [
     name: "mobile-app",
     installationId: 10101,
     isActive: false,
-    settings: { ignoredPaths: [], maxFilesPerReview: 20, severityThreshold: "low", persona: "friendly", customRules: [] },
+    settings: { ignoredPaths: [], maxFilesPerReview: 20, severityThreshold: "low", persona: "friendly", customRules: [], monthlyTokenBudget: 500000, tokensUsedThisMonth: 0, budgetMonth: new Date().toISOString().slice(0, 7) },
     createdAt: daysAgo(24)
   }
 ];

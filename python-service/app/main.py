@@ -3,6 +3,9 @@ import math
 import os
 import re
 import uuid
+import json
+import subprocess
+import tempfile
 from io import StringIO
 from pathlib import Path
 from typing import Literal
@@ -41,6 +44,10 @@ class SourceFile(BaseModel):
 
 
 class ComplexityRequest(BaseModel):
+    files: list[SourceFile]
+
+
+class DependencyAuditRequest(BaseModel):
     files: list[SourceFile]
 
 
@@ -154,3 +161,39 @@ def lint(body: ComplexityRequest):
             score, maintainability = 0.0, None
         output.append({"path": source.path, "lintErrors": lint_errors, "complexityScore": round(score, 2), "maintainabilityIndex": maintainability})
     return {"files": output}
+
+
+@app.post("/dependency-audit")
+def dependency_audit(body: DependencyAuditRequest):
+    """Audit Python requirement files inside a disposable manifest-only directory."""
+    findings = []
+    for source in body.files:
+        if not re.search(r"(^|/)(requirements[^/]*\.txt)$", source.path, re.IGNORECASE):
+            continue
+        with tempfile.TemporaryDirectory(prefix="prism-pip-audit-") as directory:
+            manifest = Path(directory) / "requirements.txt"
+            manifest.write_text(source.content, encoding="utf-8")
+            try:
+                process = subprocess.run(
+                    [os.sys.executable, "-m", "pip_audit", "-r", str(manifest), "-f", "json", "--progress-spinner", "off"],
+                    capture_output=True, text=True, timeout=60, check=False
+                )
+            except subprocess.TimeoutExpired:
+                continue
+            if not process.stdout.strip():
+                continue
+            try:
+                packages = json.loads(process.stdout)
+            except json.JSONDecodeError:
+                continue
+            dependencies = packages if isinstance(packages, list) else packages.get("dependencies", [])
+            for package in dependencies:
+                for vulnerability in package.get("vulns", []):
+                    findings.append({
+                        "file": source.path, "line": 1, "severity": "high", "category": "dependency-vulnerability", "source": "audit",
+                        "title": f"Vulnerable dependency: {package.get('name', 'unknown')}",
+                        "body": f"{vulnerability.get('id', 'Known advisory')}: {vulnerability.get('description', 'A known vulnerability affects this version.')}",
+                        "suggestion": f"Upgrade to one of: {', '.join(vulnerability.get('fix_versions', []))}" if vulnerability.get("fix_versions") else "Replace or remove the vulnerable dependency.",
+                        "confidence": 100, "posted": False
+                    })
+    return {"findings": findings}

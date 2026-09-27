@@ -43,7 +43,7 @@ export async function dismissFinding(req, res) {
     const finding = review?.findings.find((item) => item._id === req.params.findingId);
     if (!finding) return res.status(404).json({ error: "Finding not found" });
     // Deterministic lint violations are facts about the code, not learned AI judgments, so they never enter vector suppression.
-    if (finding.source === "lint" && input.dismissed) return res.status(400).json({ error: "Static analysis findings cannot be suppressed" });
+    if (finding.source !== "ai" && input.dismissed) return res.status(400).json({ error: "Deterministic findings cannot be suppressed" });
     finding.dismissed = input.dismissed; finding.dismissalReason = input.dismissed ? input.reason : "";
     if (input.dismissed && !mockSuppressions.some((item) => item.findingId === finding._id)) mockSuppressions.push({ id: `mock-suppression-${Date.now()}`, repoId: review.repository._id, reviewId: review._id, findingId: finding._id, file: finding.file, text: `${finding.title}. ${finding.body}`, reason: input.reason, type: "known_non_issue" });
     return res.json({ finding, learningStored: input.dismissed });
@@ -53,7 +53,7 @@ export async function dismissFinding(req, res) {
   const finding = review?.findings.id(req.params.findingId);
   if (!finding) return res.status(404).json({ error: "Finding not found" });
   // Deterministic lint violations must be fixed (or configured at the linter); feedback suppression applies only to AI judgments.
-  if (finding.source === "lint" && input.dismissed) return res.status(400).json({ error: "Static analysis findings cannot be suppressed" });
+  if (finding.source !== "ai" && input.dismissed) return res.status(400).json({ error: "Deterministic findings cannot be suppressed" });
   finding.dismissed = input.dismissed; finding.dismissalReason = input.dismissed ? input.reason : "";
   await review.save();
   let learningStored = false;
