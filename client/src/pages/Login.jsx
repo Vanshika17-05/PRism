@@ -1,16 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { ArrowLeft, Github, Moon, Sun } from "lucide-react";
 import { GradientMeshBackground } from "@/components/effects/GradientMeshBackground";
 import { api } from "@/lib/api";
 import { useTheme } from "@/context/ThemeContext";
-import { useAuth } from "@/context/AuthContext";
-import { toast } from "sonner";
 
 export default function Login() {
   const { theme, toggleTheme } = useTheme();
-  const { mockLogin } = useAuth();
-  const navigate = useNavigate();
   const [params] = useSearchParams();
   const config = useQuery({
     queryKey: ["auth-config"],
@@ -51,13 +47,6 @@ export default function Login() {
           >
             <Github size={20} /> Sign in with GitHub
           </a>
-        ) : config.data?.mockLoginAvailable ? (
-          <div className="mt-7">
-            <button className="clay-button inline-flex w-full items-center justify-center gap-3 px-5 py-3 font-bold" onClick={async () => { try { await mockLogin(); navigate("/dashboard/overview", { replace: true }); } catch (loginError) { toast.error(loginError.message); } }}>
-              Enter local demo
-            </button>
-            <p className="mt-3 text-xs leading-5 text-muted">Development mock mode uses local sample data and never calls a paid AI provider.</p>
-          </div>
         ) : (
           <div className="mt-7 rounded-control border border-border bg-surface-alt p-5">
             <p className="font-bold">

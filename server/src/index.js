@@ -10,16 +10,9 @@ import { initializeRealtime } from "./services/realtime.service.js";
 await connectDatabase();
 if (env.USE_MOCKS)
   logger.info(
-    "Mock mode enabled; use the local demo login without MongoDB, Redis, GitHub, or AI credentials",
+    "Mock infrastructure mode enabled; GitHub OAuth still requires configured client credentials",
   );
 const server = http.createServer(createApp());
-server.on("error", (error) => {
-  if (error.code === "EADDRINUSE") {
-    logger.fatal({ port: env.PORT }, `Port ${env.PORT} is already in use. Stop the older PRism process or choose another PORT.`);
-    process.exit(1);
-  }
-  throw error;
-});
 initializeRealtime(server);
 startReviewWorker();
 server.listen(env.PORT, "0.0.0.0", () =>

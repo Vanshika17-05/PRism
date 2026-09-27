@@ -62,31 +62,11 @@ export const readSessionCookie = (req) =>
 export function authConfig(_req, res) {
   res.json({
     githubConfigured: oauthConfigured(),
-    mockLoginAvailable: env.USE_MOCKS && env.NODE_ENV !== "production",
     githubAppInstallUrl: env.GITHUB_APP_SLUG
       ? `https://github.com/apps/${env.GITHUB_APP_SLUG}/installations/new`
       : null,
     githubAppSetupUrl: `${env.APP_URL}/dashboard/repos?installed=true`,
   });
-}
-
-export async function mockLogin(req, res) {
-  if (!env.USE_MOCKS || env.NODE_ENV === "production")
-    return res.status(404).json({ error: "Route not found" });
-  const user = {
-    _id: "test-user",
-    githubId: 100000001,
-    username: "local-engineer",
-    avatarUrl: "",
-    githubUrl: "https://github.com/",
-    email: "local@prism.dev",
-    name: "Local Engineer",
-  };
-  res.cookie(sessionCookie, await issueToken(user, req.get("user-agent")), {
-    ...cookieBase,
-    maxAge: 7 * 24 * 60 * 60_000,
-  });
-  return res.json({ user: publicUser(user) });
 }
 
 export function beginGithubAuth(_req, res) {
