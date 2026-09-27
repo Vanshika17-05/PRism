@@ -92,7 +92,9 @@ function FeatureCard({ icon: Icon, title, text }) {
       }}
       onMouseMove={move}
       onMouseLeave={reset}
-      style={reduce ? undefined : { rotateX, rotateY, transformPerspective: 900 }}
+      style={
+        reduce ? undefined : { rotateX, rotateY, transformPerspective: 900 }
+      }
     >
       <SpotlightCard className="h-full p-6">
         <span className="clay-icon text-accent-dark">
@@ -191,57 +193,57 @@ function DashboardPreview() {
         }
         className="clay-card p-4 sm:p-6"
       >
-      <div className="flex gap-3">
-        <div className="hidden w-32 rounded-[18px] bg-surface-alt p-3 sm:block">
-          <div className="h-7 w-20 rounded-xl bg-accent/30" />
-          <div className="mt-8 space-y-3">
-            {[1, 2, 3, 4].map((i) => (
-              <div
-                key={i}
-                className={`h-7 rounded-xl ${i === 1 ? "bg-accent/30" : "bg-surface"}`}
-              />
-            ))}
-          </div>
-        </div>
-        <div className="min-w-0 flex-1">
-          <div className="grid grid-cols-3 gap-2">
-            {[
-              ["Reviews", "1,284"],
-              ["Health", "92"],
-              ["Findings", "38"],
-            ].map(([a, b]) => (
-              <div className="clay-card p-3" key={a}>
-                <p className="text-[9px] text-muted">{a}</p>
-                <p className="mt-1 text-lg font-extrabold">{b}</p>
-              </div>
-            ))}
-          </div>
-          <div className="mt-3 grid gap-3 sm:grid-cols-[1.5fr_1fr]">
-            <div className="clay-card h-40 p-4">
-              <p className="text-xs font-bold">Review activity</p>
-              <svg viewBox="0 0 300 100" className="mt-4 h-24 w-full">
-                <path
-                  d="M0 80 C40 70,55 25,95 48 S155 75,185 35 S245 20,300 8"
-                  fill="none"
-                  stroke="var(--accent)"
-                  strokeWidth="5"
-                  strokeLinecap="round"
+        <div className="flex gap-3">
+          <div className="hidden w-32 rounded-[18px] bg-surface-alt p-3 sm:block">
+            <div className="h-7 w-20 rounded-xl bg-accent/30" />
+            <div className="mt-8 space-y-3">
+              {[1, 2, 3, 4].map((i) => (
+                <div
+                  key={i}
+                  className={`h-7 rounded-xl ${i === 1 ? "bg-accent/30" : "bg-surface"}`}
                 />
-                <path
-                  d="M0 80 C40 70,55 25,95 48 S155 75,185 35 S245 20,300 8 L300 100 L0 100Z"
-                  fill="var(--accent-glow)"
-                />
-              </svg>
-            </div>
-            <div className="clay-card h-40 p-4">
-              <p className="text-xs font-bold">Code health</p>
-              <div className="mx-auto mt-4 grid size-20 place-items-center rounded-full border-[9px] border-accent text-xl font-extrabold">
-                92
-              </div>
+              ))}
             </div>
           </div>
+          <div className="min-w-0 flex-1">
+            <div className="grid grid-cols-3 gap-2">
+              {[
+                ["Reviews", "1,284"],
+                ["Health", "92"],
+                ["Findings", "38"],
+              ].map(([a, b]) => (
+                <div className="clay-card p-3" key={a}>
+                  <p className="text-[9px] text-muted">{a}</p>
+                  <p className="mt-1 text-lg font-extrabold">{b}</p>
+                </div>
+              ))}
+            </div>
+            <div className="mt-3 grid gap-3 sm:grid-cols-[1.5fr_1fr]">
+              <div className="clay-card h-40 p-4">
+                <p className="text-xs font-bold">Review activity</p>
+                <svg viewBox="0 0 300 100" className="mt-4 h-24 w-full">
+                  <path
+                    d="M0 80 C40 70,55 25,95 48 S155 75,185 35 S245 20,300 8"
+                    fill="none"
+                    stroke="var(--accent)"
+                    strokeWidth="5"
+                    strokeLinecap="round"
+                  />
+                  <path
+                    d="M0 80 C40 70,55 25,95 48 S155 75,185 35 S245 20,300 8 L300 100 L0 100Z"
+                    fill="var(--accent-glow)"
+                  />
+                </svg>
+              </div>
+              <div className="clay-card h-40 p-4">
+                <p className="text-xs font-bold">Code health</p>
+                <div className="mx-auto mt-4 grid size-20 place-items-center rounded-full border-[9px] border-accent text-xl font-extrabold">
+                  92
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
       </motion.div>
     </motion.div>
   );
@@ -363,12 +365,7 @@ export default function Landing() {
             className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-4"
           >
             {features.map(([Icon, title, text]) => (
-              <FeatureCard
-                key={title}
-                icon={Icon}
-                title={title}
-                text={text}
-              />
+              <FeatureCard key={title} icon={Icon} title={title} text={text} />
             ))}
           </motion.div>
         </section>
@@ -393,7 +390,9 @@ export default function Landing() {
                   stroke="var(--accent)"
                   strokeWidth="2"
                   strokeDasharray="10 12"
-                  initial={reduce ? false : { strokeDashoffset: 820, opacity: 0 }}
+                  initial={
+                    reduce ? false : { strokeDashoffset: 820, opacity: 0 }
+                  }
                   whileInView={{ strokeDashoffset: 0, opacity: 0.65 }}
                   viewport={{ once: true, amount: 0.5 }}
                   transition={{ duration: 1.2, ease: "easeInOut" }}

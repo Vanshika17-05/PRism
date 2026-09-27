@@ -1,3 +1,5 @@
 packages:
   - server
   - client
+  - packages/*
+  - badge-service

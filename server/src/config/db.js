@@ -15,5 +15,9 @@ export async function connectDatabase() {
 
 export function databaseState() {
   if (env.USE_MOCKS) return "mock";
-  return ["disconnected", "connected", "connecting", "disconnecting"][mongoose.connection.readyState] || "unknown";
+  return (
+    ["disconnected", "connected", "connecting", "disconnecting"][
+      mongoose.connection.readyState
+    ] || "unknown"
+  );
 }

@@ -9,6 +9,8 @@ __pycache__/
 *.pyc
 .venv/
 python-service/data/
+server/data/
+.next/
 /data/
 .DS_Store
 .idea/

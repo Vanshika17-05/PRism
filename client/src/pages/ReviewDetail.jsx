@@ -18,6 +18,7 @@ import { ScrollProgressBar } from "@/components/effects/ScrollProgressBar";
 import { ShimmerSkeleton } from "@/components/effects/ShimmerSkeleton";
 import { SpotlightCard } from "@/components/effects/SpotlightCard";
 import { useReview } from "@/hooks/useReview";
+import { useReviewProgress } from "@/hooks/useReviewProgress";
 import { api } from "@/lib/api";
 import { MorphingTabs } from "@/components/effects/MorphingTabs";
 
@@ -44,10 +45,62 @@ function Suggestion({ text }) {
   );
 }
 
+function FixAgent({ reviewId, finding }) {
+  const [result, setResult] = useState(null);
+  const suggest = useMutation({
+    mutationFn: async () =>
+      (
+        await api.post(
+          `/api/reviews/${reviewId}/findings/${finding._id}/suggest-fix`,
+        )
+      ).data,
+    onSuccess: setResult,
+    onError: (error) => toast.error(error.message),
+  });
+  const apply = useMutation({
+    mutationFn: () =>
+      api.post(
+        `/api/reviews/${reviewId}/findings/${finding._id}/apply-suggestion`,
+        {
+          suggestion: result.suggestion,
+        },
+      ),
+    onSuccess: () => toast.success("Suggestion comment posted to GitHub"),
+    onError: (error) => toast.error(error.message),
+  });
+  return (
+    <div className="mt-4">
+      <button
+        className="clay-control px-4 py-2 text-xs font-bold"
+        disabled={suggest.isPending}
+        onClick={() => suggest.mutate()}
+      >
+        {suggest.isPending ? "Fetching, proposing, validating…" : "Suggest fix"}
+      </button>
+      {result && (
+        <div className="mt-3 rounded-[18px] border border-border bg-surface-clay p-4">
+          <p className="text-xs font-bold text-accent-dark">
+            Agent completed: {result.steps.join(" → ")}
+          </p>
+          <Suggestion text={result.patch} />
+          <button
+            className="clay-button mt-3 px-4 py-2 text-xs font-bold"
+            disabled={apply.isPending}
+            onClick={() => apply.mutate()}
+          >
+            Apply as suggestion comment
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function ReviewDetail() {
   const { id } = useParams();
   const queryClient = useQueryClient();
   const query = useReview(id);
+  const progress = useReviewProgress([query.data?.repository?._id]);
   const [open, setOpen] = useState({});
   const [dismissTarget, setDismissTarget] = useState(null);
   const [reason, setReason] = useState("");
@@ -109,6 +162,7 @@ export default function ReviewDetail() {
       </div>
     );
   const review = query.data;
+  const liveProgress = progress[id];
   function confirmDismiss(finding) {
     mutation.mutate({ findingId: finding._id, dismissed: true, reason });
     setDismissTarget(null);
@@ -150,6 +204,13 @@ export default function ReviewDetail() {
           </span>
         </div>
         <p className="mt-5 max-w-4xl leading-7 text-muted">{review.summary}</p>
+        {review.status === "processing" && (
+          <div className="mt-5 rounded-[18px] border border-border bg-surface-alt p-4 text-sm font-bold text-accent-dark">
+            {liveProgress?.currentFile
+              ? `Analyzing file ${liveProgress.current} of ${liveProgress.total}: ${liveProgress.currentFile}…`
+              : "Review started; preparing changed files…"}
+          </div>
+        )}
         {review.stats?.suppressedCount > 0 && (
           <div className="mt-5 flex items-center gap-2 rounded-[18px] border border-border bg-surface-alt p-4 text-sm font-bold">
             <ShieldCheck className="text-accent" size={18} />
@@ -226,7 +287,7 @@ export default function ReviewDetail() {
                               ? "Static analysis"
                               : finding.source === "audit"
                                 ? "Dependency audit"
-                              : "AI"}
+                                : "AI"}
                           </span>
                           <span className="text-xs font-black uppercase text-muted">
                             {finding.severity} · {finding.category}
@@ -263,6 +324,9 @@ export default function ReviewDetail() {
                         </div>
                         {finding.suggestion && (
                           <Suggestion text={finding.suggestion} />
+                        )}
+                        {finding.source === "ai" && (
+                          <FixAgent reviewId={id} finding={finding} />
                         )}
                         {finding.source !== "ai" ? (
                           <p className="mt-4 text-xs font-semibold text-muted">

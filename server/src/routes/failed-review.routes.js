@@ -1,5 +1,9 @@
 import { Router } from "express";
-import { dismissFailedReview, listFailedReviews, retryFailedReview } from "../controllers/failed-review.controller.js";
+import {
+  dismissFailedReview,
+  listFailedReviews,
+  retryFailedReview,
+} from "../controllers/failed-review.controller.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 
 export const failedReviewRouter = Router();

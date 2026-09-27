@@ -1,3 +1,28 @@
 import { useEffect, useRef, useState } from "react";
-import { useInView, useMotionValue, useReducedMotion, useSpring } from "framer-motion";
-export function AnimatedCounter({ value = 0, decimals = 0, suffix = "" }) { const ref = useRef(null); const visible = useInView(ref, { once: true }); const reduce = useReducedMotion(); const motionValue = useMotionValue(0); const spring = useSpring(motionValue, reduce ? { duration: 0 } : { duration: 1200, bounce: 0 }); const [display, setDisplay] = useState(0); useEffect(() => spring.on("change", setDisplay), [spring]); useEffect(() => { if (visible) motionValue.set(value); }, [visible, value, motionValue]); return <span ref={ref}>{Number(display).toFixed(decimals)}{suffix}</span>; }
+import {
+  useInView,
+  useMotionValue,
+  useReducedMotion,
+  useSpring,
+} from "framer-motion";
+export function AnimatedCounter({ value = 0, decimals = 0, suffix = "" }) {
+  const ref = useRef(null);
+  const visible = useInView(ref, { once: true });
+  const reduce = useReducedMotion();
+  const motionValue = useMotionValue(0);
+  const spring = useSpring(
+    motionValue,
+    reduce ? { duration: 0 } : { duration: 1200, bounce: 0 },
+  );
+  const [display, setDisplay] = useState(0);
+  useEffect(() => spring.on("change", setDisplay), [spring]);
+  useEffect(() => {
+    if (visible) motionValue.set(value);
+  }, [visible, value, motionValue]);
+  return (
+    <span ref={ref}>
+      {Number(display).toFixed(decimals)}
+      {suffix}
+    </span>
+  );
+}

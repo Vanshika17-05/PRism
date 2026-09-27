@@ -18,6 +18,14 @@ MongoDB <- repositories, users, reviews -> React dashboard
 
 Node owns authentication, GitHub App integration, Ollama calls, persistence, API orchestration, and ESLint analysis for JavaScript/TypeScript. Python deliberately owns local vector similarity and Python static metrics: Chroma remembers related findings and learned non-issues; Radon measures complexity and Pyflakes reports deterministic errors. Python enrichment is optional at runtime—if it is unavailable, the GitHub review still completes.
 
+## Run with Docker (recommended)
+
+```bash
+docker compose up --build
+```
+
+The stack starts MongoDB, Redis, Ollama, the Python intelligence service, the Node API, the Vite client, and the Next.js badge service. Open `http://localhost:4100` for the unified production-style app, `http://localhost:5173` for the standalone client, and `http://localhost:3000/api/badge/<repoId>.svg` for badges. Persistent Docker volumes retain Mongo data, Redis jobs, Chroma memory, SQLite analytics, raw diffs, and reports.
+
 ## Run locally from one link
 
 Requirements: Node.js 22+ and pnpm.
@@ -49,6 +57,41 @@ uvicorn app.main:app --reload --port 8100
 ```
 
 Review memory always uses deterministic local embeddings, so it cannot incur API charges. Chroma data persists under `python-service/data/chroma` by default.
+
+## Real-time review progress
+
+The queue worker publishes `review:started`, `review:analyzing`, `review:completed`, and `review:failed` through authenticated Socket.io repository rooms. Review History and Review Detail display the current file count and path while work is running.
+
+## Provider-agnostic AI
+
+Each repository can select OpenAI, Gemini, or Claude. All strategies normalize to the same review contract. OpenAI mode uses local Ollama when `OPENAI_API_KEY` is absent, so the default setup remains free and cannot make a paid API request. Gemini and Claude require their corresponding keys before they can be selected successfully.
+
+## Reporting, SQL, and object storage
+
+MongoDB remains the source of truth. Completed reviews additionally write flattened rows to SQLite with parameterized SQL for time-series CSV/PDF reporting. Full raw diffs and generated PDFs are stored in S3 when `USE_S3=true`; otherwise they use persistent local disk. S3 report downloads use five-minute signed URLs.
+
+## Suggest-fix agent
+
+An AI finding can run a small agent loop: fetch the current file from GitHub, propose a unified diff, validate that it applies cleanly, and then—only after user confirmation—post a GitHub suggested-change comment. This fetch → propose → validate → act boundary is intentionally more than a single prompt call.
+
+## PRism Score badge
+
+`badge-service/` is an independent Next.js service. Embed a repository score with:
+
+```markdown
+![PRism Score](https://YOUR-BADGE-SERVICE.vercel.app/api/badge/REPOSITORY_ID.svg)
+```
+
+## Deployment
+
+- Vite React client → Vercel (`client/`).
+- Next.js badge service → a separate Vercel project (`badge-service/`).
+- Node server and Python intelligence service → Render.
+- Redis → Upstash Redis free tier or another Redis-compatible provider.
+- MongoDB → Atlas free tier.
+- Optional raw-diff/report storage → AWS S3; keep `USE_S3=false` for the free local-disk fallback.
+
+Set `APP_URL`, `CLIENT_URL`, and `PRISM_API_URL` to the deployed URLs. Actual public URLs should replace the placeholders after the corresponding Vercel and Render projects are connected; no paid resource is created automatically by this repository.
 
 ## Live integration configuration
 

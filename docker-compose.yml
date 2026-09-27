@@ -7,7 +7,8 @@ services:
     volumes:
       - prism_mongo:/data/db
     healthcheck:
-      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      test:
+        ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -39,6 +40,24 @@ services:
     volumes:
       - prism_chroma:/data/chroma
 
+  client:
+    build:
+      context: .
+      dockerfile: client/Dockerfile
+    restart: unless-stopped
+    ports:
+      - "5173:5173"
+
+  badge-service:
+    build:
+      context: .
+      dockerfile: badge-service/Dockerfile
+    restart: unless-stopped
+    environment:
+      PRISM_API_URL: http://server:4100
+    ports:
+      - "3000:3000"
+
   ollama:
     image: ollama/ollama:latest
     restart: unless-stopped
@@ -58,8 +77,12 @@ services:
       PYTHON_SERVICE_URL: http://python-service:8100
       OLLAMA_BASE_URL: http://ollama:11434
       REDIS_URL: redis://redis:6379
+      LOCAL_STORAGE_DIR: /data/storage
+      ANALYTICS_DB_PATH: /data/analytics.sqlite
     ports:
       - "4100:4100"
+    volumes:
+      - prism_server_data:/data
     depends_on:
       mongo:
         condition: service_healthy
@@ -75,3 +98,4 @@ volumes:
   prism_chroma:
   prism_ollama:
   prism_redis:
+  prism_server_data:

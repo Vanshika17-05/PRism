@@ -1,7 +1,18 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowDown, ArrowRight, ArrowUp, Check, Clipboard, Github, Plus, Settings2, ShieldX, X } from "lucide-react";
+import {
+  ArrowDown,
+  ArrowRight,
+  ArrowUp,
+  Check,
+  Clipboard,
+  Github,
+  Plus,
+  Settings2,
+  ShieldX,
+  X,
+} from "lucide-react";
 import { toast } from "sonner";
 import { TiltCard } from "@/components/effects/TiltCard";
 import { SpotlightCard } from "@/components/effects/SpotlightCard";
@@ -12,31 +23,427 @@ import { useRepos } from "@/hooks/useRepos";
 import { useStats } from "@/hooks/useStats";
 import { api } from "@/lib/api";
 
-const personas = ["strict", "balanced", "friendly"].map((value) => ({ value, label: value[0].toUpperCase() + value.slice(1) }));
+const personas = ["strict", "balanced", "friendly"].map((value) => ({
+  value,
+  label: value[0].toUpperCase() + value.slice(1),
+}));
 
 function SettingsDrawer({ repo, onClose }) {
-  const queryClient = useQueryClient(); const [settings, setSettings] = useState(repo.settings); const [tag, setTag] = useState(""); const [rule, setRule] = useState(""); const [copied, setCopied] = useState(false);
-  const suppressions = useQuery({ queryKey: ["suppressions", repo._id], queryFn: async () => (await api.get(`/api/repos/${repo._id}/suppressions`)).data.patterns });
-  const removeSuppression = useMutation({ mutationFn: (id) => api.delete(`/api/repos/${repo._id}/suppressions/${id}`), onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["suppressions", repo._id] }); toast.success("Suppression removed"); } });
-  const save = useMutation({ mutationFn: () => api.patch(`/api/repos/${repo._id}/settings`, settings), onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["repos"] }); toast.success("Repository settings saved"); onClose(); }, onError: (error) => toast.error(error.message) });
-  function add(key, value, setter) { const clean = value.trim(); if (clean && !settings[key].includes(clean)) setSettings((current) => ({ ...current, [key]: [...current[key], clean] })); setter(""); }
-  const markdown = `[![PRism Score](https://img.shields.io/badge/PRism-92%2F100-B5502E)](https://github.com/Vanshika17-05/PRism)`;
-  const budget = settings.monthlyTokenBudget ?? 500000; const used = settings.tokensUsedThisMonth ?? 0; const budgetPercent = budget ? Math.min(100, Math.round((used / budget) * 100)) : 100;
-  return <motion.aside initial={{ x: "100%" }} animate={{ x: 0 }} exit={{ x: "100%" }} transition={{ type: "spring", damping: 28, stiffness: 280 }} className="fixed inset-y-0 right-0 z-50 w-full max-w-xl overflow-y-auto border-l border-border bg-bg p-6 shadow-2xl"><div className="flex items-center justify-between"><div><p className="text-sm font-bold text-accent-dark">REPOSITORY SETTINGS</p><h2 className="mt-1 text-2xl font-black">{repo.fullName}</h2></div><button className="clay-icon" onClick={onClose}><X /></button></div><div className="mt-8 space-y-7">
-    <section><label className="text-sm font-bold">Ignored paths</label><div className="mt-3 flex gap-2"><input className="clay-input" value={tag} onChange={(event) => setTag(event.target.value)} placeholder="dist/**" /><button className="clay-icon shrink-0" onClick={() => add("ignoredPaths", tag, setTag)}><Plus /></button></div><div className="mt-3 flex flex-wrap gap-2">{settings.ignoredPaths.map((item) => <button key={item} className="clay-badge" onClick={() => setSettings((current) => ({ ...current, ignoredPaths: current.ignoredPaths.filter((value) => value !== item) }))}>{item} ×</button>)}</div></section>
-    <section><p className="text-sm font-bold">Severity threshold</p><MorphingTabs className="mt-3" items={["low", "medium", "high"].map((value) => ({ value, label: value[0].toUpperCase() + value.slice(1) }))} value={settings.severityThreshold} onChange={(value) => setSettings((current) => ({ ...current, severityThreshold: value }))} layoutId="severity-setting" /></section>
-    <section><p className="text-sm font-bold">Review persona</p><MorphingTabs className="mt-3" items={personas} value={settings.persona || "balanced"} onChange={(value) => setSettings((current) => ({ ...current, persona: value }))} layoutId="persona-setting" /></section>
-    <section className="clay-control p-5"><div className="flex items-end justify-between gap-3"><div><p className="text-sm font-bold">Monthly AI token budget</p><p className="mt-1 text-xs text-muted">{Math.round(used / 1000)}k / {Math.round(budget / 1000)}k tokens used this month</p></div><span className="text-sm font-black text-accent-dark">{budgetPercent}%</span></div><div className="mt-4 h-3 overflow-hidden rounded-full bg-surface-alt"><motion.div className="h-full rounded-full bg-accent" animate={{ width: `${budgetPercent}%` }} /></div><label className="mt-4 block text-xs font-bold text-muted">Monthly limit<input className="clay-input mt-2" type="number" min="0" max="100000000" value={budget} onChange={(event) => setSettings((current) => ({ ...current, monthlyTokenBudget: Number(event.target.value) }))} /></label><p className="mt-2 text-xs leading-5 text-muted">At the limit, PRism skips local AI and still runs deterministic analysis.</p></section>
-    <section><label className="text-sm font-bold">Custom review rules</label><div className="mt-3 flex gap-2"><input className="clay-input" value={rule} onChange={(event) => setRule(event.target.value)} placeholder="Flag endpoints without authorization" /><button className="clay-icon shrink-0" onClick={() => add("customRules", rule, setRule)}><Plus /></button></div><div className="mt-3 space-y-2">{settings.customRules.map((item) => <button key={item} className="clay-control w-full p-3 text-left text-sm" onClick={() => setSettings((current) => ({ ...current, customRules: current.customRules.filter((value) => value !== item) }))}>{item}<span className="float-right">×</span></button>)}</div></section>
-    <section><div className="flex items-center gap-2"><ShieldX size={17} className="text-accent" /><p className="text-sm font-bold">Learned non-issues</p></div><p className="mt-2 text-xs leading-5 text-muted">Dismissed false positives suppress strongly similar AI findings. Undo any pattern that was learned accidentally.</p><div className="mt-3 space-y-2">{suppressions.isLoading ? <ShimmerSkeleton className="h-20" /> : suppressions.data?.length ? suppressions.data.map((pattern) => <div className="clay-control p-3" key={pattern.id}><p className="line-clamp-2 text-xs font-semibold">{pattern.text}</p>{pattern.reason && <p className="mt-1 text-xs text-muted">Reason: {pattern.reason}</p>}<button className="mt-2 text-xs font-bold text-accent-dark" onClick={() => removeSuppression.mutate(pattern.id)}>Undo suppression</button></div>) : <p className="rounded-[16px] border border-border p-4 text-xs text-muted">No suppression patterns learned yet.</p>}</div></section>
-    <section className="clay-card p-5"><p className="text-sm font-bold">PRism Score badge</p><img className="mt-4" src="https://img.shields.io/badge/PRism-92%2F100-B5502E" alt="PRism score 92 out of 100" /><button className="mt-4 flex items-center gap-2 text-xs font-bold text-accent-dark" onClick={async () => { await navigator.clipboard.writeText(markdown); setCopied(true); setTimeout(() => setCopied(false), 1500); }}>{copied ? <Check size={15} /> : <Clipboard size={15} />} Copy Markdown</button></section>
-    <MagneticButton className="w-full" disabled={save.isPending} onClick={() => save.mutate()}>{save.isPending ? "Saving…" : "Save settings"}</MagneticButton>
-  </div></motion.aside>;
+  const queryClient = useQueryClient();
+  const [settings, setSettings] = useState(repo.settings);
+  const [tag, setTag] = useState("");
+  const [rule, setRule] = useState("");
+  const [copied, setCopied] = useState(false);
+  const suppressions = useQuery({
+    queryKey: ["suppressions", repo._id],
+    queryFn: async () =>
+      (await api.get(`/api/repos/${repo._id}/suppressions`)).data.patterns,
+  });
+  const removeSuppression = useMutation({
+    mutationFn: (id) => api.delete(`/api/repos/${repo._id}/suppressions/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["suppressions", repo._id] });
+      toast.success("Suppression removed");
+    },
+  });
+  const save = useMutation({
+    mutationFn: () => api.patch(`/api/repos/${repo._id}/settings`, settings),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["repos"] });
+      toast.success("Repository settings saved");
+      onClose();
+    },
+    onError: (error) => toast.error(error.message),
+  });
+  function add(key, value, setter) {
+    const clean = value.trim();
+    if (clean && !settings[key].includes(clean))
+      setSettings((current) => ({
+        ...current,
+        [key]: [...current[key], clean],
+      }));
+    setter("");
+  }
+  const badgeUrl = `${import.meta.env.VITE_BADGE_SERVICE_URL || "http://localhost:3000"}/api/badge/${repo._id}.svg`;
+  const markdown = `![PRism Score](${badgeUrl})`;
+  const budget = settings.monthlyTokenBudget ?? 500000;
+  const used = settings.tokensUsedThisMonth ?? 0;
+  const budgetPercent = budget
+    ? Math.min(100, Math.round((used / budget) * 100))
+    : 100;
+  return (
+    <motion.aside
+      initial={{ x: "100%" }}
+      animate={{ x: 0 }}
+      exit={{ x: "100%" }}
+      transition={{ type: "spring", damping: 28, stiffness: 280 }}
+      className="fixed inset-y-0 right-0 z-50 w-full max-w-xl overflow-y-auto border-l border-border bg-bg p-6 shadow-2xl"
+    >
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-sm font-bold text-accent-dark">
+            REPOSITORY SETTINGS
+          </p>
+          <h2 className="mt-1 text-2xl font-black">{repo.fullName}</h2>
+        </div>
+        <button className="clay-icon" onClick={onClose}>
+          <X />
+        </button>
+      </div>
+      <div className="mt-8 space-y-7">
+        <section>
+          <label className="text-sm font-bold">Ignored paths</label>
+          <div className="mt-3 flex gap-2">
+            <input
+              className="clay-input"
+              value={tag}
+              onChange={(event) => setTag(event.target.value)}
+              placeholder="dist/**"
+            />
+            <button
+              className="clay-icon shrink-0"
+              onClick={() => add("ignoredPaths", tag, setTag)}
+            >
+              <Plus />
+            </button>
+          </div>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {settings.ignoredPaths.map((item) => (
+              <button
+                key={item}
+                className="clay-badge"
+                onClick={() =>
+                  setSettings((current) => ({
+                    ...current,
+                    ignoredPaths: current.ignoredPaths.filter(
+                      (value) => value !== item,
+                    ),
+                  }))
+                }
+              >
+                {item} ×
+              </button>
+            ))}
+          </div>
+        </section>
+        <section>
+          <p className="text-sm font-bold">Severity threshold</p>
+          <MorphingTabs
+            className="mt-3"
+            items={["low", "medium", "high"].map((value) => ({
+              value,
+              label: value[0].toUpperCase() + value.slice(1),
+            }))}
+            value={settings.severityThreshold}
+            onChange={(value) =>
+              setSettings((current) => ({
+                ...current,
+                severityThreshold: value,
+              }))
+            }
+            layoutId="severity-setting"
+          />
+        </section>
+        <section>
+          <p className="text-sm font-bold">Review persona</p>
+          <MorphingTabs
+            className="mt-3"
+            items={personas}
+            value={settings.persona || "balanced"}
+            onChange={(value) =>
+              setSettings((current) => ({ ...current, persona: value }))
+            }
+            layoutId="persona-setting"
+          />
+        </section>
+        <section>
+          <label className="text-sm font-bold" htmlFor="ai-provider">
+            AI provider
+          </label>
+          <select
+            id="ai-provider"
+            className="clay-input mt-3"
+            value={settings.aiProvider || "openai"}
+            onChange={(event) =>
+              setSettings((current) => ({
+                ...current,
+                aiProvider: event.target.value,
+              }))
+            }
+          >
+            <option value="openai">OpenAI (local Ollama fallback)</option>
+            <option value="gemini">Google Gemini</option>
+            <option value="claude">Anthropic Claude</option>
+          </select>
+          <p className="mt-2 text-xs text-muted">
+            Vendor APIs require their matching key. OpenAI mode stays local
+            through Ollama when no OpenAI key is configured.
+          </p>
+        </section>
+        <section className="clay-control p-5">
+          <div className="flex items-end justify-between gap-3">
+            <div>
+              <p className="text-sm font-bold">Monthly AI token budget</p>
+              <p className="mt-1 text-xs text-muted">
+                {Math.round(used / 1000)}k / {Math.round(budget / 1000)}k tokens
+                used this month
+              </p>
+            </div>
+            <span className="text-sm font-black text-accent-dark">
+              {budgetPercent}%
+            </span>
+          </div>
+          <div className="mt-4 h-3 overflow-hidden rounded-full bg-surface-alt">
+            <motion.div
+              className="h-full rounded-full bg-accent"
+              animate={{ width: `${budgetPercent}%` }}
+            />
+          </div>
+          <label className="mt-4 block text-xs font-bold text-muted">
+            Monthly limit
+            <input
+              className="clay-input mt-2"
+              type="number"
+              min="0"
+              max="100000000"
+              value={budget}
+              onChange={(event) =>
+                setSettings((current) => ({
+                  ...current,
+                  monthlyTokenBudget: Number(event.target.value),
+                }))
+              }
+            />
+          </label>
+          <p className="mt-2 text-xs leading-5 text-muted">
+            At the limit, PRism skips local AI and still runs deterministic
+            analysis.
+          </p>
+        </section>
+        <section>
+          <label className="text-sm font-bold">Custom review rules</label>
+          <div className="mt-3 flex gap-2">
+            <input
+              className="clay-input"
+              value={rule}
+              onChange={(event) => setRule(event.target.value)}
+              placeholder="Flag endpoints without authorization"
+            />
+            <button
+              className="clay-icon shrink-0"
+              onClick={() => add("customRules", rule, setRule)}
+            >
+              <Plus />
+            </button>
+          </div>
+          <div className="mt-3 space-y-2">
+            {settings.customRules.map((item) => (
+              <button
+                key={item}
+                className="clay-control w-full p-3 text-left text-sm"
+                onClick={() =>
+                  setSettings((current) => ({
+                    ...current,
+                    customRules: current.customRules.filter(
+                      (value) => value !== item,
+                    ),
+                  }))
+                }
+              >
+                {item}
+                <span className="float-right">×</span>
+              </button>
+            ))}
+          </div>
+        </section>
+        <section>
+          <div className="flex items-center gap-2">
+            <ShieldX size={17} className="text-accent" />
+            <p className="text-sm font-bold">Learned non-issues</p>
+          </div>
+          <p className="mt-2 text-xs leading-5 text-muted">
+            Dismissed false positives suppress strongly similar AI findings.
+            Undo any pattern that was learned accidentally.
+          </p>
+          <div className="mt-3 space-y-2">
+            {suppressions.isLoading ? (
+              <ShimmerSkeleton className="h-20" />
+            ) : suppressions.data?.length ? (
+              suppressions.data.map((pattern) => (
+                <div className="clay-control p-3" key={pattern.id}>
+                  <p className="line-clamp-2 text-xs font-semibold">
+                    {pattern.text}
+                  </p>
+                  {pattern.reason && (
+                    <p className="mt-1 text-xs text-muted">
+                      Reason: {pattern.reason}
+                    </p>
+                  )}
+                  <button
+                    className="mt-2 text-xs font-bold text-accent-dark"
+                    onClick={() => removeSuppression.mutate(pattern.id)}
+                  >
+                    Undo suppression
+                  </button>
+                </div>
+              ))
+            ) : (
+              <p className="rounded-[16px] border border-border p-4 text-xs text-muted">
+                No suppression patterns learned yet.
+              </p>
+            )}
+          </div>
+        </section>
+        <section className="clay-card p-5">
+          <p className="text-sm font-bold">PRism Score badge</p>
+          <img
+            className="mt-4"
+            src={badgeUrl}
+            alt="Current PRism code-health score"
+          />
+          <button
+            className="mt-4 flex items-center gap-2 text-xs font-bold text-accent-dark"
+            onClick={async () => {
+              await navigator.clipboard.writeText(markdown);
+              setCopied(true);
+              setTimeout(() => setCopied(false), 1500);
+            }}
+          >
+            {copied ? <Check size={15} /> : <Clipboard size={15} />} Copy
+            Markdown
+          </button>
+        </section>
+        <MagneticButton
+          className="w-full"
+          disabled={save.isPending}
+          onClick={() => save.mutate()}
+        >
+          {save.isPending ? "Saving…" : "Save settings"}
+        </MagneticButton>
+      </div>
+    </motion.aside>
+  );
 }
 
 export default function Repos() {
-  const query = useRepos(); const stats = useStats(query.data || []); const queryClient = useQueryClient(); const [selected, setSelected] = useState(null);
-  const toggle = useMutation({ mutationFn: (repo) => api.patch(`/api/repos/${repo._id}/settings`, { isActive: !repo.isActive }), onSuccess: () => queryClient.invalidateQueries({ queryKey: ["repos"] }) });
-  if (query.isLoading) return <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">{[1, 2, 3].map((item) => <ShimmerSkeleton key={item} className="h-64" />)}</div>;
-  return <div><p className="text-sm font-bold text-accent-dark">REPOSITORIES</p><h1 className="mt-1 text-3xl font-black tracking-tight">Connected codebases</h1><p className="mt-2 text-sm text-muted">Control review behavior and improve signal quality with feedback.</p><motion.div initial="hidden" animate="show" variants={{ show: { transition: { staggerChildren: .05 } } }} className="mt-7 grid gap-6 md:grid-cols-2 xl:grid-cols-3">{query.data?.map((repo, index) => { const accuracy = stats[index]?.data?.signalAccuracy; const Trend = accuracy?.trend === "up" ? ArrowUp : accuracy?.trend === "down" ? ArrowDown : ArrowRight; return <motion.div variants={{ hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0 } }} key={repo._id}><TiltCard className="h-full"><SpotlightCard className="h-full border-0 p-6 shadow-none"><div className="flex items-start justify-between"><span className="clay-icon text-accent"><Github /></span><button role="switch" aria-checked={repo.isActive} onClick={() => toggle.mutate(repo)} className={`relative h-7 w-12 rounded-full p-1 transition ${repo.isActive ? "bg-accent" : "bg-surface-alt"}`}><motion.span className="block size-5 rounded-full bg-surface shadow" animate={{ x: repo.isActive ? 20 : 0 }} /></button></div><h2 className="mt-6 text-lg font-black">{repo.fullName}</h2><p className="mt-2 text-sm text-muted">{repo.isActive ? "Reviews are active" : "Reviewing is paused"} · {repo.settings.persona || "balanced"} persona</p><div className="mt-5 flex items-end justify-between rounded-[18px] border border-border bg-surface-alt p-4"><div><p className="text-xs font-bold text-muted">SIGNAL ACCURACY · 30 DAYS</p><p className="mt-1 text-3xl font-black">{accuracy?.value ?? "—"}%</p></div><span className={`flex items-center gap-1 text-xs font-bold ${accuracy?.trend === "down" ? "text-high" : "text-accent-dark"}`}><Trend size={15} />vs prior 30d</span></div><button className="clay-control mt-6 flex w-full items-center justify-center gap-2 py-3 text-sm font-bold" onClick={() => setSelected(repo)}><Settings2 size={16} /> Configure</button></SpotlightCard></TiltCard></motion.div>; })}</motion.div><AnimatePresence>{selected && <><motion.button aria-label="Close settings" className="fixed inset-0 z-40 bg-[#16100C]/65 backdrop-blur-sm" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setSelected(null)} /><SettingsDrawer repo={selected} onClose={() => setSelected(null)} /></>}</AnimatePresence></div>;
+  const query = useRepos();
+  const stats = useStats(query.data || []);
+  const queryClient = useQueryClient();
+  const [selected, setSelected] = useState(null);
+  const toggle = useMutation({
+    mutationFn: (repo) =>
+      api.patch(`/api/repos/${repo._id}/settings`, {
+        isActive: !repo.isActive,
+      }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["repos"] }),
+  });
+  if (query.isLoading)
+    return (
+      <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+        {[1, 2, 3].map((item) => (
+          <ShimmerSkeleton key={item} className="h-64" />
+        ))}
+      </div>
+    );
+  return (
+    <div>
+      <p className="text-sm font-bold text-accent-dark">REPOSITORIES</p>
+      <h1 className="mt-1 text-3xl font-black tracking-tight">
+        Connected codebases
+      </h1>
+      <p className="mt-2 text-sm text-muted">
+        Control review behavior and improve signal quality with feedback.
+      </p>
+      <motion.div
+        initial="hidden"
+        animate="show"
+        variants={{ show: { transition: { staggerChildren: 0.05 } } }}
+        className="mt-7 grid gap-6 md:grid-cols-2 xl:grid-cols-3"
+      >
+        {query.data?.map((repo, index) => {
+          const accuracy = stats[index]?.data?.signalAccuracy;
+          const Trend =
+            accuracy?.trend === "up"
+              ? ArrowUp
+              : accuracy?.trend === "down"
+                ? ArrowDown
+                : ArrowRight;
+          return (
+            <motion.div
+              variants={{
+                hidden: { opacity: 0, y: 12 },
+                show: { opacity: 1, y: 0 },
+              }}
+              key={repo._id}
+            >
+              <TiltCard className="h-full">
+                <SpotlightCard className="h-full border-0 p-6 shadow-none">
+                  <div className="flex items-start justify-between">
+                    <span className="clay-icon text-accent">
+                      <Github />
+                    </span>
+                    <button
+                      role="switch"
+                      aria-checked={repo.isActive}
+                      onClick={() => toggle.mutate(repo)}
+                      className={`relative h-7 w-12 rounded-full p-1 transition ${repo.isActive ? "bg-accent" : "bg-surface-alt"}`}
+                    >
+                      <motion.span
+                        className="block size-5 rounded-full bg-surface shadow"
+                        animate={{ x: repo.isActive ? 20 : 0 }}
+                      />
+                    </button>
+                  </div>
+                  <h2 className="mt-6 text-lg font-black">{repo.fullName}</h2>
+                  <p className="mt-2 text-sm text-muted">
+                    {repo.isActive
+                      ? "Reviews are active"
+                      : "Reviewing is paused"}{" "}
+                    · {repo.settings.persona || "balanced"} persona
+                  </p>
+                  <div className="mt-5 flex items-end justify-between rounded-[18px] border border-border bg-surface-alt p-4">
+                    <div>
+                      <p className="text-xs font-bold text-muted">
+                        SIGNAL ACCURACY · 30 DAYS
+                      </p>
+                      <p className="mt-1 text-3xl font-black">
+                        {accuracy?.value ?? "—"}%
+                      </p>
+                    </div>
+                    <span
+                      className={`flex items-center gap-1 text-xs font-bold ${accuracy?.trend === "down" ? "text-high" : "text-accent-dark"}`}
+                    >
+                      <Trend size={15} />
+                      vs prior 30d
+                    </span>
+                  </div>
+                  <button
+                    className="clay-control mt-6 flex w-full items-center justify-center gap-2 py-3 text-sm font-bold"
+                    onClick={() => setSelected(repo)}
+                  >
+                    <Settings2 size={16} /> Configure
+                  </button>
+                </SpotlightCard>
+              </TiltCard>
+            </motion.div>
+          );
+        })}
+      </motion.div>
+      <AnimatePresence>
+        {selected && (
+          <>
+            <motion.button
+              aria-label="Close settings"
+              className="fixed inset-0 z-40 bg-[#16100C]/65 backdrop-blur-sm"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setSelected(null)}
+            />
+            <SettingsDrawer repo={selected} onClose={() => setSelected(null)} />
+          </>
+        )}
+      </AnimatePresence>
+    </div>
+  );
 }

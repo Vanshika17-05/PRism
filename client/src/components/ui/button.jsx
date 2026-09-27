@@ -1,3 +1,15 @@
 import { Slot } from "@radix-ui/react-slot";
 import { cn } from "@/lib/utils";
-export function Button({ asChild, variant = "primary", className, ...props }) { const Component = asChild ? Slot : "button"; return <Component className={cn("inline-flex h-10 items-center justify-center gap-2 rounded-control px-4 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50", variant === "primary" ? "clay-button" : "clay-control text-primary", className)} {...props} />; }
+export function Button({ asChild, variant = "primary", className, ...props }) {
+  const Component = asChild ? Slot : "button";
+  return (
+    <Component
+      className={cn(
+        "inline-flex h-10 items-center justify-center gap-2 rounded-control px-4 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
+        variant === "primary" ? "clay-button" : "clay-control text-primary",
+        className,
+      )}
+      {...props}
+    />
+  );
+}

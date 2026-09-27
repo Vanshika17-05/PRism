@@ -10,20 +10,89 @@ import Repos from "@/pages/Repos";
 import SettingsPage from "@/pages/Settings";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 
-const Page = ({ children }) => <motion.div initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} transition={{ duration: .16 }}>{children}</motion.div>;
+const Page = ({ children }) => (
+  <motion.div
+    initial={{ opacity: 0, y: 5 }}
+    animate={{ opacity: 1, y: 0 }}
+    exit={{ opacity: 0, y: -4 }}
+    transition={{ duration: 0.16 }}
+  >
+    {children}
+  </motion.div>
+);
 export default function App() {
   const location = useLocation();
-  return <AnimatePresence mode="wait"><Routes location={location} key={location.pathname}>
-    <Route path="/" element={<Page><Landing /></Page>} />
-    <Route path="/login" element={<Page><Login /></Page>} />
-    <Route path="/dashboard" element={<ProtectedRoute><AppShell /></ProtectedRoute>}>
-      <Route index element={<Navigate to="overview" replace />} />
-      <Route path="overview" element={<Page><Overview /></Page>} />
-      <Route path="reviews" element={<Page><Reviews /></Page>} />
-      <Route path="reviews/:id" element={<Page><ReviewDetail /></Page>} />
-      <Route path="repos" element={<Page><Repos /></Page>} />
-      <Route path="settings" element={<Page><SettingsPage /></Page>} />
-    </Route>
-    <Route path="*" element={<Navigate to="/" replace />} />
-  </Routes></AnimatePresence>;
+  return (
+    <AnimatePresence mode="wait">
+      <Routes location={location} key={location.pathname}>
+        <Route
+          path="/"
+          element={
+            <Page>
+              <Landing />
+            </Page>
+          }
+        />
+        <Route
+          path="/login"
+          element={
+            <Page>
+              <Login />
+            </Page>
+          }
+        />
+        <Route
+          path="/dashboard"
+          element={
+            <ProtectedRoute>
+              <AppShell />
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<Navigate to="overview" replace />} />
+          <Route
+            path="overview"
+            element={
+              <Page>
+                <Overview />
+              </Page>
+            }
+          />
+          <Route
+            path="reviews"
+            element={
+              <Page>
+                <Reviews />
+              </Page>
+            }
+          />
+          <Route
+            path="reviews/:id"
+            element={
+              <Page>
+                <ReviewDetail />
+              </Page>
+            }
+          />
+          <Route
+            path="repos"
+            element={
+              <Page>
+                <Repos />
+              </Page>
+            }
+          />
+          <Route
+            path="settings"
+            element={
+              <Page>
+                <SettingsPage />
+              </Page>
+            }
+          />
+        </Route>
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </AnimatePresence>
+  );
 }

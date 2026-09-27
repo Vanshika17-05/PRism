@@ -4,4 +4,8 @@ import { verifyGithubSignature } from "../middleware/verifyGithubSignature.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 
 export const webhookRouter = Router();
-webhookRouter.post("/", verifyGithubSignature, asyncHandler(handleGithubWebhook));
+webhookRouter.post(
+  "/",
+  verifyGithubSignature,
+  asyncHandler(handleGithubWebhook),
+);

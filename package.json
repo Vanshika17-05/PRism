@@ -2,7 +2,17 @@
   "name": "prism",
   "private": true,
   "type": "module",
-  "workspaces": ["server", "client"],
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "better-sqlite3",
+      "esbuild",
+      "msgpackr-extract"
+    ]
+  },
+  "workspaces": [
+    "server",
+    "client"
+  ],
   "scripts": {
     "dev": "pnpm --parallel --filter @prism/server --filter @prism/client dev",
     "dev:server": "pnpm --filter @prism/server dev",
@@ -12,5 +22,8 @@
     "build": "pnpm --filter @prism/client build",
     "start": "pnpm build && pnpm --filter @prism/server start",
     "test": "pnpm --filter @prism/server test"
+  },
+  "devDependencies": {
+    "prettier": "^3.9.9"
   }
 }
