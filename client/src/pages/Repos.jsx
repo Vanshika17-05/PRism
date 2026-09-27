@@ -24,6 +24,7 @@ import { MorphingTabs } from "@/components/effects/MorphingTabs";
 import { useRepos } from "@/hooks/useRepos";
 import { useStats } from "@/hooks/useStats";
 import { api } from "@/lib/api";
+import { useOrganization } from "@/context/OrganizationContext";
 
 const personas = ["strict", "balanced", "friendly"].map((value) => ({
   value,
@@ -331,6 +332,8 @@ export default function Repos() {
   const query = useRepos();
   const stats = useStats(query.data || []);
   const queryClient = useQueryClient();
+  const { role } = useOrganization();
+  const canManage = role === "owner" || role === "admin";
   const [searchParams, setSearchParams] = useSearchParams();
   const [selected, setSelected] = useState(null);
   const authConfig = useQuery({
@@ -454,6 +457,8 @@ export default function Repos() {
                     <button
                       role="switch"
                       aria-checked={repo.isActive}
+                      disabled={!canManage}
+                      title={canManage ? "Toggle reviews" : "Admin role required"}
                       onClick={() => toggle.mutate(repo)}
                       className={`relative h-7 w-12 rounded-full p-1 transition ${repo.isActive ? "bg-accent" : "bg-surface-alt"}`}
                     >
@@ -489,6 +494,8 @@ export default function Repos() {
                   <button
                     className="clay-control mt-6 flex w-full items-center justify-center gap-2 py-3 text-sm font-bold"
                     onClick={() => setSelected(repo)}
+                    disabled={!canManage}
+                    title={canManage ? "Configure repository" : "Admin role required"}
                   >
                     <Settings2 size={16} /> Configure
                   </button>

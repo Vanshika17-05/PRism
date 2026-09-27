@@ -8,6 +8,7 @@ const daysAgo = (days, hour = 10) => {
 export const mockRepositories = [
   {
     _id: "66f000000000000000000001",
+    organizationId: "65f000000000000000000001",
     githubRepoId: 918273645,
     fullName: "prism-labs/web-platform",
     owner: "prism-labs",
@@ -28,6 +29,7 @@ export const mockRepositories = [
   },
   {
     _id: "66f000000000000000000000002",
+    organizationId: "65f000000000000000000001",
     githubRepoId: 918273646,
     fullName: "prism-labs/api-gateway",
     owner: "prism-labs",
@@ -48,6 +50,7 @@ export const mockRepositories = [
   },
   {
     _id: "66f000000000000000000000003",
+    organizationId: "65f000000000000000000001",
     githubRepoId: 918273647,
     fullName: "prism-labs/mobile-app",
     owner: "prism-labs",

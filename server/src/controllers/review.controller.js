@@ -2,7 +2,7 @@ import mongoose from "mongoose";
 import { z } from "zod";
 import { Review } from "../models/Review.model.js";
 import { env } from "../config/env.js";
-import { mockReviews, mockSuppressions } from "../data/mockData.js";
+import { mockRepositories, mockReviews, mockSuppressions } from "../data/mockData.js";
 import { storeKnownNonIssue } from "../services/python.service.js";
 import { logger } from "../utils/logger.js";
 import {
@@ -31,6 +31,8 @@ export async function listReviews(req, res) {
   if (env.USE_MOCKS) {
     const filtered = mockReviews.filter(
       (review) =>
+        mockRepositories.find((repo) => repo._id === review.repository._id)
+          ?.organizationId === String(req.organization._id) &&
         (!query.status || review.status === query.status) &&
         (!query.repo || review.repository._id === query.repo),
     );
@@ -46,7 +48,8 @@ export async function listReviews(req, res) {
       },
     });
   }
-  const filter = {};
+  const organizationRepos = await (await import("../models/Repository.model.js")).Repository.find({ organizationId: req.organization._id }).distinct("_id");
+  const filter = { repository: { $in: organizationRepos } };
   if (query.status) filter.status = query.status;
   if (query.repo && mongoose.isValidObjectId(query.repo))
     filter.repository = query.repo;

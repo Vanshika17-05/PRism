@@ -12,6 +12,7 @@ import "./index.css";
 import App from "./App";
 import { AuthProvider } from "@/context/AuthContext";
 import { ThemeProvider } from "@/context/ThemeContext";
+import { OrganizationProvider } from "@/context/OrganizationContext";
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false } },
@@ -21,14 +22,16 @@ ReactDOM.createRoot(document.getElementById("root")).render(
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <AuthProvider>
-          <BrowserRouter>
-            <App />
+          <OrganizationProvider>
+            <BrowserRouter>
+              <App />
             <Toaster
               position="top-right"
               closeButton
               toastOptions={{ className: "prism-toast" }}
             />
-          </BrowserRouter>
+            </BrowserRouter>
+          </OrganizationProvider>
         </AuthProvider>
       </ThemeProvider>
     </QueryClientProvider>

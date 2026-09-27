@@ -17,6 +17,7 @@ import { failedReviewRouter } from "./routes/failed-review.routes.js";
 import { metricsRouter } from "./routes/metrics.routes.js";
 import { storageRouter } from "./routes/storage.routes.js";
 import { publicRouter } from "./routes/public.routes.js";
+import { organizationRouter, inviteRouter } from "./routes/organization.routes.js";
 import { requestContextMiddleware } from "./utils/requestContext.js";
 import { authMiddleware } from "./middleware/auth.js";
 import { notFound } from "./middleware/notFound.js";
@@ -52,6 +53,8 @@ export function createApp() {
   app.use("/api/health", healthRouter);
   app.use("/api/auth", authRouter);
   app.use("/api/public", publicRouter);
+  app.use("/api/organizations", authMiddleware, organizationRouter);
+  app.use("/api/invites", authMiddleware, inviteRouter);
   app.use("/api/reviews", authMiddleware, reviewRouter);
   app.use("/api/repos", authMiddleware, repoRouter);
   app.use("/api/failed-reviews", authMiddleware, failedReviewRouter);

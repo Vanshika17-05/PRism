@@ -6,6 +6,7 @@ import { createApp } from "../src/app.js";
 import { env } from "../src/config/env.js";
 import { enqueueReview } from "../src/queues/review.queue.js";
 import { mockFailedReviews, mockRepositories } from "../src/data/mockData.js";
+import { mockOrganizations } from "../src/data/mockOrganizations.js";
 
 async function withServer(run) { const server = createApp().listen(0, "127.0.0.1"); await new Promise((resolve) => server.once("listening", resolve)); try { await run(`http://127.0.0.1:${server.address().port}`); } finally { await new Promise((resolve) => server.close(resolve)); } }
 const token = jwt.sign({ _id: "test-user", username: "test-engineer", name: "Test Engineer" }, env.JWT_SECRET, { expiresIn: "5m" });
@@ -43,6 +44,19 @@ test("paused repositories acknowledge pull requests without queuing reviews", ()
   const response = await fetch(`${base}/api/webhooks/github`, { method: "POST", headers: { "content-type": "application/json", "x-github-event": "pull_request", "x-github-delivery": "test-paused", "x-hub-signature-256": signature }, body });
   assert.equal(response.status, 200);
   assert.deepEqual(await response.json(), { skipped: true, reason: "reviews_paused" });
+}));
+
+test("member role can read repositories but cannot change settings", () => withServer(async (base) => {
+  const member = mockOrganizations[0].members[0];
+  const originalRole = member.role;
+  member.role = "member";
+  try {
+    const headers = { authorization: `Bearer ${token}`, "content-type": "application/json", "x-organization-id": mockOrganizations[0]._id };
+    assert.equal((await fetch(`${base}/api/repos`, { headers })).status, 200);
+    const response = await fetch(`${base}/api/repos/${mockRepositories[0]._id}/settings`, { method: "PATCH", headers, body: JSON.stringify({ persona: "strict" }) });
+    assert.equal(response.status, 403);
+    assert.equal((await response.json()).code, "INSUFFICIENT_ROLE");
+  } finally { member.role = originalRole; }
 }));
 
 test("failed review reaches dead letter after three attempts and can be retried", () => withServer(async (base) => {

@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import jwt from "jsonwebtoken";
 import { env } from "../config/env.js";
 import { User } from "../models/User.model.js";
+import { Organization } from "../models/Organization.model.js";
 
 const sessionCookie = "prism_session";
 const stateCookie = "prism_oauth_state";
@@ -36,6 +37,10 @@ function publicUser(user) {
 
 function issueToken(user) {
   return jwt.sign(publicUser(user), env.JWT_SECRET, { expiresIn: "7d" });
+}
+function workspaceSlug(username, githubId) {
+  const base = `${username}-workspace`.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  return `${base}-${githubId}`;
 }
 export const oauthConfigured = () =>
   Boolean(env.GITHUB_APP_CLIENT_ID && env.GITHUB_APP_CLIENT_SECRET);
@@ -130,8 +135,21 @@ export async function githubCallback(req, res) {
     : await User.findOneAndUpdate({ githubId: profile.id }, identity, {
         upsert: true,
         new: true,
-        setDefaultsOnInsert: true,
+      setDefaultsOnInsert: true,
       });
+  if (!env.USE_MOCKS)
+    await Organization.findOneAndUpdate(
+      { ownerId: user._id },
+      {
+        $setOnInsert: {
+          name: `${profile.login}'s workspace`,
+          slug: workspaceSlug(profile.login, profile.id),
+          ownerId: user._id,
+          members: [{ userId: user._id, role: "owner" }],
+        },
+      },
+      { upsert: true, new: true },
+    );
   res.clearCookie(stateCookie, cookieBase);
   res.cookie(sessionCookie, issueToken(user), {
     ...cookieBase,

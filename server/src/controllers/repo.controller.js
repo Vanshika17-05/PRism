@@ -26,7 +26,7 @@ const settingsSchema = z.object({
   isActive: z.boolean().optional(),
 });
 
-export async function listRepos(_req, res) {
+export async function listRepos(req, res) {
   const month = new Date().toISOString().slice(0, 7);
   if (!env.USE_MOCKS)
     await Repository.updateMany(
@@ -38,9 +38,9 @@ export async function listRepos(_req, res) {
         },
       },
     );
-  if (env.USE_MOCKS) return res.json({ repositories: mockRepositories });
+  if (env.USE_MOCKS) return res.json({ repositories: mockRepositories.filter((repo) => repo.organizationId === String(req.organization._id)) });
   res.json({
-    repositories: await Repository.find().sort({ fullName: 1 }).lean(),
+    repositories: await Repository.find({ organizationId: req.organization._id }).sort({ fullName: 1 }).lean(),
   });
 }
 

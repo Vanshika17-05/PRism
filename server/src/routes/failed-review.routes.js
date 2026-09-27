@@ -5,8 +5,9 @@ import {
   retryFailedReview,
 } from "../controllers/failed-review.controller.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
+import { roleMiddleware } from "../middleware/role.js";
 
 export const failedReviewRouter = Router();
-failedReviewRouter.get("/", asyncHandler(listFailedReviews));
-failedReviewRouter.post("/:id/retry", asyncHandler(retryFailedReview));
-failedReviewRouter.delete("/:id", asyncHandler(dismissFailedReview));
+failedReviewRouter.get("/", roleMiddleware("member"), asyncHandler(listFailedReviews));
+failedReviewRouter.post("/:id/retry", roleMiddleware("admin"), asyncHandler(retryFailedReview));
+failedReviewRouter.delete("/:id", roleMiddleware("admin"), asyncHandler(dismissFailedReview));

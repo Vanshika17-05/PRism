@@ -13,6 +13,7 @@ import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useTheme } from "@/context/ThemeContext";
 import { useAuth } from "@/context/AuthContext";
+import { useOrganization } from "@/context/OrganizationContext";
 
 const baseItems = [
   {
@@ -57,6 +58,7 @@ export function AppShell() {
   const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
   const { user, logout } = useAuth();
+  const { organizations, current: currentOrg, role, switchOrganization } = useOrganization();
   const failedJobs = useQuery({
     queryKey: ["failed-reviews"],
     queryFn: async () => (await api.get("/api/failed-reviews?limit=1")).data,
@@ -67,7 +69,7 @@ export function AppShell() {
       ? { ...item, badge: failedJobs.data?.pagination.total || 0 }
       : item,
   );
-  const current =
+  const currentNav =
     items.find((item) => location.pathname.startsWith(item.value))?.value ||
     items[0].value;
   const health = useQuery({
@@ -80,12 +82,19 @@ export function AppShell() {
     <div className="min-h-screen bg-bg text-primary md:flex">
       <aside className="sidebar fixed inset-y-0 left-0 z-30 hidden w-64 flex-col px-5 py-7 md:flex">
         <Logo />
+        {organizations.length > 1 ? (
+          <select className="clay-input mt-6 text-xs" value={currentOrg?._id || ""} onChange={(event) => switchOrganization(event.target.value)} aria-label="Organization">
+            {organizations.map((org) => <option key={org._id} value={org._id}>{org.name}</option>)}
+          </select>
+        ) : currentOrg ? (
+          <div className="clay-control mt-6 px-3 py-2 text-xs font-bold">{currentOrg.name}<span className="ml-2 text-muted">· {role}</span></div>
+        ) : null}
         <div className="mt-12 text-[10px] font-bold uppercase tracking-[.2em] text-muted">
           Workspace
         </div>
         <MorphingTabs
           items={items}
-          value={current}
+          value={currentNav}
           onChange={navigate}
           layoutId="desktop-nav-pill"
           className="mt-3 flex-col items-stretch border-0 bg-transparent p-0 shadow-none [&>button]:w-full"
@@ -97,7 +106,7 @@ export function AppShell() {
             <Logo />
           </div>
           <div className="hidden text-sm text-muted md:block">
-            Welcome back, <b className="text-primary">{user?.name}</b>
+            Welcome back, <b className="text-primary">{user?.name}</b> <span className="ml-2">· {currentOrg?.name}</span>
           </div>
           <div className="flex items-center gap-2">
             <span className="clay-badge hidden items-center gap-2 sm:inline-flex">
@@ -136,7 +145,7 @@ export function AppShell() {
       <nav className="fixed inset-x-3 bottom-3 z-40 md:hidden">
         <MorphingTabs
           items={items}
-          value={current}
+          value={currentNav}
           onChange={navigate}
           layoutId="mobile-nav-pill"
           className="justify-between overflow-x-auto [&>button]:flex-1 [&>button]:flex-col [&>button]:gap-1 [&>button]:px-2 [&>button]:py-1.5 [&>button]:text-[10px]"

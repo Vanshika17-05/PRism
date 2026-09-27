@@ -3,6 +3,7 @@ import { AlertTriangle, CheckCircle2, RotateCcw, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
 import { ShimmerSkeleton } from "@/components/effects/ShimmerSkeleton";
+import { Link } from "react-router-dom";
 
 function FailedJob({ job, retry, dismiss }) {
   const payload = job.payload || {};
@@ -77,6 +78,7 @@ export default function SettingsPage() {
         Recover permanently failed pull-request reviews without losing their
         original payload.
       </p>
+      <Link className="clay-control mt-5 inline-flex px-4 py-2 text-sm font-bold text-accent-dark" to="/dashboard/settings/team">Manage team & roles</Link>
       <section className="clay-card mt-8 p-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">

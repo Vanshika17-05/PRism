@@ -5,6 +5,8 @@ import { logger } from "../utils/logger.js";
 import { env } from "../config/env.js";
 import { currentRequestId } from "../utils/requestContext.js";
 import { mockRepositories } from "../data/mockData.js";
+import { Organization } from "../models/Organization.model.js";
+import { User } from "../models/User.model.js";
 
 const reviewActions = new Set([
   "opened",
@@ -13,8 +15,9 @@ const reviewActions = new Set([
   "ready_for_review",
 ]);
 
-function repoData(repository, installationId) {
+function repoData(repository, installationId, organizationId) {
   return {
+    ...(organizationId ? { organizationId } : {}),
     githubRepoId: repository.id,
     fullName: repository.full_name,
     owner: repository.owner.login,
@@ -23,15 +26,24 @@ function repoData(repository, installationId) {
   };
 }
 
-function repositoryUpdate(repository, installationId, activate = false) {
+function repositoryUpdate(repository, installationId, organizationId, activate = false) {
   const update = {
     $set: {
-      ...repoData(repository, installationId),
+      ...repoData(repository, installationId, organizationId),
     },
   };
   if (activate) update.$set.isActive = true;
   else update.$setOnInsert = { isActive: true };
   return update;
+}
+
+async function webhookOrganization(payload) {
+  const existing = await Repository.findOne({ installationId: payload.installation?.id }).select("organizationId").lean();
+  if (existing?.organizationId) return existing.organizationId;
+  const user = payload.sender?.id ? await User.findOne({ githubId: payload.sender.id }).select("_id").lean() : null;
+  const organization = user ? await Organization.findOne({ "members.userId": user._id }).select("_id").lean() : null;
+  if (!organization) throw new Error("No PRism organization found for GitHub App installer");
+  return organization._id;
 }
 
 async function processWebhook({ payload, event, deliveryId }) {
@@ -44,13 +56,14 @@ async function processWebhook({ payload, event, deliveryId }) {
       await Repository.updateMany({ installationId }, { isActive: false });
       return;
     }
+    const organizationId = await webhookOrganization(payload);
     const added = payload.repositories_added || payload.repositories || [];
     const removed = payload.repositories_removed || [];
     await Promise.all(
       added.map((repo) =>
         Repository.findOneAndUpdate(
           { githubRepoId: repo.id },
-          repositoryUpdate(repo, installationId, true),
+          repositoryUpdate(repo, installationId, organizationId, true),
           { upsert: true, new: true, setDefaultsOnInsert: true },
         ),
       ),
@@ -62,9 +75,10 @@ async function processWebhook({ payload, event, deliveryId }) {
     return;
   }
 
+  const organizationId = await webhookOrganization(payload);
   const repository = await Repository.findOneAndUpdate(
     { githubRepoId: payload.repository.id },
-    repositoryUpdate(payload.repository, payload.installation.id),
+    repositoryUpdate(payload.repository, payload.installation.id, organizationId),
     { upsert: true, new: true, setDefaultsOnInsert: true },
   );
   const duplicate = await Review.exists({

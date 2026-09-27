@@ -21,6 +21,7 @@ import { useReview } from "@/hooks/useReview";
 import { useReviewProgress } from "@/hooks/useReviewProgress";
 import { api } from "@/lib/api";
 import { MorphingTabs } from "@/components/effects/MorphingTabs";
+import { useOrganization } from "@/context/OrganizationContext";
 
 function Suggestion({ text }) {
   const [copied, setCopied] = useState(false);
@@ -45,7 +46,7 @@ function Suggestion({ text }) {
   );
 }
 
-function FixAgent({ reviewId, finding }) {
+function FixAgent({ reviewId, finding, canManage }) {
   const [result, setResult] = useState(null);
   const suggest = useMutation({
     mutationFn: async () =>
@@ -72,7 +73,8 @@ function FixAgent({ reviewId, finding }) {
     <div className="mt-4">
       <button
         className="clay-control px-4 py-2 text-xs font-bold"
-        disabled={suggest.isPending}
+        disabled={suggest.isPending || !canManage}
+        title={canManage ? "Suggest a fix" : "Admin role required"}
         onClick={() => suggest.mutate()}
       >
         {suggest.isPending ? "Fetching, proposing, validating…" : "Suggest fix"}
@@ -100,6 +102,8 @@ export default function ReviewDetail() {
   const { id } = useParams();
   const queryClient = useQueryClient();
   const query = useReview(id);
+  const { role } = useOrganization();
+  const canManage = role === "owner" || role === "admin";
   const progress = useReviewProgress([query.data?.repository?._id]);
   const [open, setOpen] = useState({});
   const [dismissTarget, setDismissTarget] = useState(null);
@@ -326,7 +330,7 @@ export default function ReviewDetail() {
                           <Suggestion text={finding.suggestion} />
                         )}
                         {finding.source === "ai" && (
-                          <FixAgent reviewId={id} finding={finding} />
+                          <FixAgent reviewId={id} finding={finding} canManage={canManage} />
                         )}
                         {finding.source !== "ai" ? (
                           <p className="mt-4 text-xs font-semibold text-muted">
@@ -367,6 +371,8 @@ export default function ReviewDetail() {
                         ) : (
                           <button
                             className="mt-4 text-xs font-bold text-muted underline decoration-accent underline-offset-4"
+                            disabled={!canManage}
+                            title={canManage ? "Update finding" : "Admin role required"}
                             onClick={() =>
                               finding.dismissed
                                 ? mutation.mutate({

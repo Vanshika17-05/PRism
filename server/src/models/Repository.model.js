@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 
 const repositorySchema = new mongoose.Schema(
   {
+    organizationId: { type: mongoose.Schema.Types.ObjectId, ref: "Organization", required: true, index: true },
     githubRepoId: { type: Number, required: true, unique: true, index: true },
     fullName: { type: String, required: true, trim: true },
     owner: { type: String, required: true, trim: true },
