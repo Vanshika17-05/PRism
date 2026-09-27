@@ -31,7 +31,8 @@ const schema = z
     OPENAI_API_KEY: z.string().optional(),
     OPENAI_MODEL: z.string().default("gpt-4.1-mini"),
     GEMINI_API_KEY: z.string().optional(),
-    GEMINI_MODEL: z.string().default("gemini-2.0-flash"),
+    // Model names are deployment configuration, never hardcoded in application code.
+    GEMINI_MODEL: z.string().optional(),
     ANTHROPIC_API_KEY: z.string().optional(),
     CLAUDE_MODEL: z.string().default("claude-3-5-haiku-latest"),
     PYTHON_SERVICE_URL: z.string().url().default("http://127.0.0.1:8100"),

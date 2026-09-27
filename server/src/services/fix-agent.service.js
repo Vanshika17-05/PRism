@@ -10,13 +10,18 @@ function cleanPatch(text) {
 }
 async function proposeWithProvider(provider, prompt) {
   if (provider === "gemini") {
-    if (!env.GEMINI_API_KEY)
-      throw new Error("GEMINI_API_KEY is not configured");
+    if (!env.GEMINI_API_KEY || !env.GEMINI_MODEL)
+      throw new Error(
+        "GEMINI_API_KEY and GEMINI_MODEL must both be configured",
+      );
     const body = await providerFetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${env.GEMINI_MODEL}:generateContent?key=${env.GEMINI_API_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(env.GEMINI_MODEL)}:generateContent`,
       {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: {
+          "content-type": "application/json",
+          "x-goog-api-key": env.GEMINI_API_KEY,
+        },
         body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
       },
       env.AI_TIMEOUT_MS,
@@ -45,8 +50,7 @@ async function proposeWithProvider(provider, prompt) {
     );
     return body.content?.find((part) => part.type === "text")?.text || "";
   }
-  if (!env.OPENAI_API_KEY)
-    throw new Error("OPENAI_API_KEY is not configured");
+  if (!env.OPENAI_API_KEY) throw new Error("OPENAI_API_KEY is not configured");
   const body = await providerFetch(
     "https://api.openai.com/v1/chat/completions",
     {

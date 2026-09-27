@@ -119,6 +119,13 @@ Copy `server/.env.example` to `server/.env`, set `USE_MOCKS=false`, and configur
 - `GITHUB_APP_SLUG` (the final segment of `github.com/settings/apps/{slug}`)
 - `PORT`
 
+Gemini is opt-in per repository. Set both `GEMINI_API_KEY` and
+`GEMINI_MODEL`, then select Google Gemini in that repository's settings.
+PRism does not contain a hardcoded Gemini model name and does not call Gemini
+when the key/model are absent. Provider quota and billing are controlled by
+the Google account that owns the key, so configure a Google usage cap before
+enabling it if zero spend is required.
+
 The GitHub App requires **Pull requests: read/write**, **Contents: read**, and **Metadata: read**. Subscribe it to pull request, installation, and installation-repositories events. Point its webhook to `/api/webhooks/github`.
 Set the GitHub App's **Setup URL** to `{APP_URL}/dashboard/repos?installed=true`. The dashboard's **Connect a repository** button opens `https://github.com/apps/{GITHUB_APP_SLUG}/installations/new`; GitHub remains the source of truth for selecting and managing repository access.
 

@@ -3,15 +3,21 @@ import { buildReviewPrompt } from "../../utils/prompts.js";
 import { normalizedResult, providerFetch } from "./common.js";
 
 export async function generateReview(context) {
-  if (!env.GEMINI_API_KEY)
-    throw Object.assign(new Error("GEMINI_API_KEY is not configured"), {
-      status: 503,
-    });
+  if (!env.GEMINI_API_KEY || !env.GEMINI_MODEL)
+    throw Object.assign(
+      new Error("GEMINI_API_KEY and GEMINI_MODEL must both be configured"),
+      {
+        status: 503,
+      },
+    );
   const payload = await providerFetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${env.GEMINI_MODEL}:generateContent?key=${env.GEMINI_API_KEY}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(env.GEMINI_MODEL)}:generateContent`,
     {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: {
+        "content-type": "application/json",
+        "x-goog-api-key": env.GEMINI_API_KEY,
+      },
       body: JSON.stringify({
         contents: [{ parts: [{ text: buildReviewPrompt(context) }] }],
         generationConfig: {
