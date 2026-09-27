@@ -4,6 +4,7 @@ import { enqueueReview } from "../queues/review.queue.js";
 import { logger } from "../utils/logger.js";
 import { env } from "../config/env.js";
 import { currentRequestId } from "../utils/requestContext.js";
+import { mockRepositories } from "../data/mockData.js";
 
 const reviewActions = new Set([
   "opened",
@@ -19,8 +20,18 @@ function repoData(repository, installationId) {
     owner: repository.owner.login,
     name: repository.name,
     installationId,
-    isActive: true,
   };
+}
+
+function repositoryUpdate(repository, installationId, activate = false) {
+  const update = {
+    $set: {
+      ...repoData(repository, installationId),
+    },
+  };
+  if (activate) update.$set.isActive = true;
+  else update.$setOnInsert = { isActive: true };
+  return update;
 }
 
 async function processWebhook({ payload, event, deliveryId }) {
@@ -29,13 +40,17 @@ async function processWebhook({ payload, event, deliveryId }) {
 
   if (event === "installation" || event === "installation_repositories") {
     const installationId = payload.installation?.id;
+    if (event === "installation" && payload.action === "deleted") {
+      await Repository.updateMany({ installationId }, { isActive: false });
+      return;
+    }
     const added = payload.repositories_added || payload.repositories || [];
     const removed = payload.repositories_removed || [];
     await Promise.all(
       added.map((repo) =>
         Repository.findOneAndUpdate(
           { githubRepoId: repo.id },
-          repoData(repo, installationId),
+          repositoryUpdate(repo, installationId, true),
           { upsert: true, new: true, setDefaultsOnInsert: true },
         ),
       ),
@@ -44,14 +59,12 @@ async function processWebhook({ payload, event, deliveryId }) {
       { githubRepoId: { $in: removed.map((repo) => repo.id) } },
       { isActive: false },
     );
-    if (event === "installation" && payload.action === "deleted")
-      await Repository.updateMany({ installationId }, { isActive: false });
     return;
   }
 
   const repository = await Repository.findOneAndUpdate(
     { githubRepoId: payload.repository.id },
-    repoData(payload.repository, payload.installation.id),
+    repositoryUpdate(payload.repository, payload.installation.id),
     { upsert: true, new: true, setDefaultsOnInsert: true },
   );
   const duplicate = await Review.exists({
@@ -99,6 +112,19 @@ export async function handleGithubWebhook(req, res) {
     !payload.pull_request?.draft;
   if (!supportedInstallation && !supportedPullRequest)
     return res.status(200).json({ ignored: true });
+  if (supportedPullRequest && payload.repository?.id) {
+    const repository = env.USE_MOCKS
+      ? mockRepositories.find(
+          (item) => item.githubRepoId === payload.repository.id,
+        )
+      : await Repository.findOne({ githubRepoId: payload.repository.id })
+          .select("isActive")
+          .lean();
+    if (repository?.isActive === false)
+      return res
+        .status(200)
+        .json({ skipped: true, reason: "reviews_paused" });
+  }
   res.status(202).json({ accepted: true });
   setImmediate(() =>
     processWebhook({ payload, event, deliveryId }).catch((error) =>

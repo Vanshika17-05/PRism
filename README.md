@@ -110,9 +110,11 @@ Copy `server/.env.example` to `server/.env`, set `USE_MOCKS=false`, and configur
 - `APP_URL` (the single public origin, such as `http://localhost:4100`)
 - `GITHUB_APP_CLIENT_ID`
 - `GITHUB_APP_CLIENT_SECRET`
+- `GITHUB_APP_SLUG` (the final segment of `github.com/settings/apps/{slug}`)
 - `PORT`
 
 The GitHub App requires **Pull requests: read/write**, **Contents: read**, and **Metadata: read**. Subscribe it to pull request, installation, and installation-repositories events. Point its webhook to `/api/webhooks/github`.
+Set the GitHub App's **Setup URL** to `{APP_URL}/dashboard/repos?installed=true`. The dashboard's **Connect a repository** button opens `https://github.com/apps/{GITHUB_APP_SLUG}/installations/new`; GitHub remains the source of truth for selecting and managing repository access.
 
 ## API
 

@@ -23,6 +23,10 @@ const schema = z
     GITHUB_WEBHOOK_SECRET: z.string().optional(),
     GITHUB_APP_CLIENT_ID: z.string().optional(),
     GITHUB_APP_CLIENT_SECRET: z.string().optional(),
+    GITHUB_APP_SLUG: z
+      .string()
+      .regex(/^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/)
+      .optional(),
     APP_URL: z.string().url().default("http://localhost:4100"),
     OPENAI_API_KEY: z.string().optional(),
     OPENAI_MODEL: z.string().default("gpt-4.1-mini"),

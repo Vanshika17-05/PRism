@@ -5,7 +5,7 @@ import jwt from "jsonwebtoken";
 import { createApp } from "../src/app.js";
 import { env } from "../src/config/env.js";
 import { enqueueReview } from "../src/queues/review.queue.js";
-import { mockFailedReviews } from "../src/data/mockData.js";
+import { mockFailedReviews, mockRepositories } from "../src/data/mockData.js";
 
 async function withServer(run) { const server = createApp().listen(0, "127.0.0.1"); await new Promise((resolve) => server.once("listening", resolve)); try { await run(`http://127.0.0.1:${server.address().port}`); } finally { await new Promise((resolve) => server.close(resolve)); } }
 const token = jwt.sign({ _id: "test-user", username: "test-engineer", name: "Test Engineer" }, env.JWT_SECRET, { expiresIn: "5m" });
@@ -34,6 +34,15 @@ test("webhook rejects bad signatures and accepts valid supported events", () => 
   const bad = await fetch(`${base}/api/webhooks/github`, { method: "POST", headers: { "content-type": "application/json", "x-github-event": "pull_request", "x-github-delivery": "test-bad", "x-hub-signature-256": "sha256=bad" }, body }); assert.equal(bad.status, 401);
   const signature = `sha256=${crypto.createHmac("sha256", env.GITHUB_WEBHOOK_SECRET || "").update(body).digest("hex")}`;
   const good = await fetch(`${base}/api/webhooks/github`, { method: "POST", headers: { "content-type": "application/json", "x-github-event": "pull_request", "x-github-delivery": "test-good", "x-hub-signature-256": signature }, body }); assert.equal(good.status, 202);
+}));
+
+test("paused repositories acknowledge pull requests without queuing reviews", () => withServer(async (base) => {
+  const paused = mockRepositories.find((repository) => !repository.isActive);
+  const body = JSON.stringify({ action: "opened", repository: { id: paused.githubRepoId }, pull_request: { draft: false } });
+  const signature = `sha256=${crypto.createHmac("sha256", env.GITHUB_WEBHOOK_SECRET || "").update(body).digest("hex")}`;
+  const response = await fetch(`${base}/api/webhooks/github`, { method: "POST", headers: { "content-type": "application/json", "x-github-event": "pull_request", "x-github-delivery": "test-paused", "x-hub-signature-256": signature }, body });
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), { skipped: true, reason: "reviews_paused" });
 }));
 
 test("failed review reaches dead letter after three attempts and can be retried", () => withServer(async (base) => {

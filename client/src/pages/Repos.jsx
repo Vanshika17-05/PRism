@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
 import {
@@ -7,6 +8,7 @@ import {
   ArrowUp,
   Check,
   Clipboard,
+  ExternalLink,
   Github,
   Plus,
   Settings2,
@@ -329,7 +331,42 @@ export default function Repos() {
   const query = useRepos();
   const stats = useStats(query.data || []);
   const queryClient = useQueryClient();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [selected, setSelected] = useState(null);
+  const authConfig = useQuery({
+    queryKey: ["auth-config"],
+    queryFn: async () => (await api.get("/api/auth/config")).data,
+    staleTime: Infinity,
+  });
+  const installUrl = authConfig.data?.githubAppInstallUrl;
+  const installationCompleted = searchParams.get("installed") === "true";
+  const connectRepository = () => {
+    if (installUrl) window.location.assign(installUrl);
+    else toast.error("GITHUB_APP_SLUG is not configured on the server");
+  };
+  useEffect(() => {
+    if (!installationCompleted) return undefined;
+    toast.success("Repository connected! It may take a few seconds to appear.");
+    queryClient.invalidateQueries({ queryKey: ["repos"] });
+    const retries = [
+      window.setTimeout(
+        () => queryClient.refetchQueries({ queryKey: ["repos"] }),
+        2_000,
+      ),
+      window.setTimeout(
+        () => queryClient.refetchQueries({ queryKey: ["repos"] }),
+        5_000,
+      ),
+      window.setTimeout(() => {
+        setSearchParams((current) => {
+          const next = new URLSearchParams(current);
+          next.delete("installed");
+          return next;
+        }, { replace: true });
+      }, 5_100),
+    ];
+    return () => retries.forEach(window.clearTimeout);
+  }, [installationCompleted, queryClient, setSearchParams]);
   const toggle = useMutation({
     mutationFn: (repo) =>
       api.patch(`/api/repos/${repo._id}/settings`, {
@@ -347,18 +384,50 @@ export default function Repos() {
     );
   return (
     <div>
-      <p className="text-sm font-bold text-accent-dark">REPOSITORIES</p>
-      <h1 className="mt-1 text-3xl font-black tracking-tight">
-        Connected codebases
-      </h1>
-      <p className="mt-2 text-sm text-muted">
-        Control review behavior and improve signal quality with feedback.
-      </p>
+      <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
+        <div>
+          <p className="text-sm font-bold text-accent-dark">REPOSITORIES</p>
+          <h1 className="mt-1 text-3xl font-black tracking-tight">
+            Connected codebases
+          </h1>
+          <p className="mt-2 text-sm text-muted">
+            Control review behavior and improve signal quality with feedback.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-3">
+          <a
+            className="clay-control inline-flex items-center gap-2 px-4 py-3 text-sm font-bold"
+            href="https://github.com/settings/installations"
+            target="_blank"
+            rel="noreferrer"
+          >
+            Manage installations <ExternalLink size={16} />
+          </a>
+          <MagneticButton onClick={connectRepository}>
+            <Plus size={17} /> Connect a repository
+          </MagneticButton>
+        </div>
+      </div>
+      {!query.data?.length && (
+        <SpotlightCard className="mt-8 p-10 text-center">
+          <span className="clay-icon mx-auto text-accent">
+            <Github />
+          </span>
+          <h2 className="mt-5 text-2xl font-black">Connect your first repository</h2>
+          <p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-muted">
+            Install the PRism GitHub App and choose the repositories you want
+            reviewed. Repository access always stays under GitHub's control.
+          </p>
+          <MagneticButton className="mx-auto mt-6" onClick={connectRepository}>
+            <Plus size={17} /> Connect a repository
+          </MagneticButton>
+        </SpotlightCard>
+      )}
       <motion.div
         initial="hidden"
         animate="show"
         variants={{ show: { transition: { staggerChildren: 0.05 } } }}
-        className="mt-7 grid gap-6 md:grid-cols-2 xl:grid-cols-3"
+        className={`${query.data?.length ? "mt-7" : "mt-0"} grid gap-6 md:grid-cols-2 xl:grid-cols-3`}
       >
         {query.data?.map((repo, index) => {
           const accuracy = stats[index]?.data?.signalAccuracy;

@@ -43,7 +43,13 @@ export const readSessionCookie = (req) =>
   parseCookies(req)[sessionCookie] || "";
 
 export function authConfig(_req, res) {
-  res.json({ githubConfigured: oauthConfigured() });
+  res.json({
+    githubConfigured: oauthConfigured(),
+    githubAppInstallUrl: env.GITHUB_APP_SLUG
+      ? `https://github.com/apps/${env.GITHUB_APP_SLUG}/installations/new`
+      : null,
+    githubAppSetupUrl: `${env.APP_URL}/dashboard/repos?installed=true`,
+  });
 }
 
 export function beginGithubAuth(_req, res) {
