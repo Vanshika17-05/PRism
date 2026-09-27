@@ -6,8 +6,15 @@ import { createApp } from "../src/app.js";
 import { env } from "../src/config/env.js";
 import { enqueueReview } from "../src/queues/review.queue.js";
 import { mockFailedReviews, mockRepositories } from "../src/data/mockData.js";
-import { mockOrganizations } from "../src/data/mockOrganizations.js";
+import {
+  mockInvites,
+  mockOrganizations,
+} from "../src/data/mockOrganizations.js";
 import { createSession } from "../src/services/session.service.js";
+import {
+  ensurePersonalOrganization,
+  personalWorkspaceSlug,
+} from "../src/services/organization.service.js";
 
 async function withServer(run) {
   const server = createApp().listen(0, "127.0.0.1");
@@ -24,11 +31,34 @@ const token = jwt.sign(
     _id: "test-user",
     username: "test-engineer",
     name: "Test Engineer",
+    email: "test@example.com",
     jti: testSession.jti,
   },
   env.JWT_SECRET,
   { expiresIn: "5m" },
 );
+
+test("fresh GitHub sign-in creates an idempotent personal owner workspace", async () => {
+  let operation;
+  const fakeOrganizationModel = {
+    findOneAndUpdate(filter, update, options) {
+      operation = { filter, update, options };
+      return Promise.resolve(update.$setOnInsert);
+    },
+  };
+  const workspace = await ensurePersonalOrganization(
+    { _id: "new-user", username: "Fresh User", githubId: 4242 },
+    fakeOrganizationModel,
+  );
+  assert.equal(
+    personalWorkspaceSlug("Fresh User", 4242),
+    "fresh-user-workspace-4242",
+  );
+  assert.deepEqual(operation.filter, { ownerId: "new-user" });
+  assert.equal(operation.options.upsert, true);
+  assert.equal(workspace.name, "Fresh User's workspace");
+  assert.deepEqual(workspace.members, [{ userId: "new-user", role: "owner" }]);
+});
 
 test("health, auth, and protected dashboard API", () =>
   withServer(async (base) => {
@@ -210,6 +240,56 @@ test("member role can read repositories but cannot change settings", () =>
     } finally {
       member.role = originalRole;
     }
+  }));
+
+test("an invited signed-in user joins the organization and the invite is consumed", () =>
+  withServer(async (base) => {
+    const inviteResponse = await fetch(
+      `${base}/api/organizations/${mockOrganizations[0]._id}/invite`,
+      {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${token}`,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({ email: "invitee@example.com", role: "member" }),
+      },
+    );
+    assert.equal(inviteResponse.status, 201);
+    const pending = mockInvites.find(
+      (invite) => invite.email === "invitee@example.com",
+    );
+    assert.ok(pending);
+
+    const inviteeSession = await createSession("invitee-user", "Invite test");
+    const inviteeToken = jwt.sign(
+      {
+        _id: "invitee-user",
+        username: "invitee",
+        email: "invitee@example.com",
+        jti: inviteeSession.jti,
+      },
+      env.JWT_SECRET,
+      { expiresIn: "5m" },
+    );
+    const accepted = await fetch(
+      `${base}/api/invites/${pending.token}/accept`,
+      {
+        method: "POST",
+        headers: { authorization: `Bearer ${inviteeToken}` },
+      },
+    );
+    assert.equal(accepted.status, 200);
+    assert.ok(
+      mockOrganizations[0].members.some(
+        (member) =>
+          member.userId === "invitee-user" && member.role === "member",
+      ),
+    );
+    assert.equal(mockInvites.includes(pending), false);
+    mockOrganizations[0].members = mockOrganizations[0].members.filter(
+      (member) => member.userId !== "invitee-user",
+    );
   }));
 
 test("global API limiter returns JSON 429 with Retry-After", () =>
