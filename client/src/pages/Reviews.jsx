@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { ArrowLeft, ArrowRight, Filter, GitPullRequest, RefreshCw, Search } from "lucide-react";
+import { ArrowLeft, ArrowRight, GitPullRequest, RefreshCw } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { MorphingTabs } from "@/components/effects/MorphingTabs";
 import { ShimmerSkeleton } from "@/components/effects/ShimmerSkeleton";

@@ -1,5 +1,7 @@
 # PRism
 
+[![CI](https://github.com/Vanshika17-05/PRism/actions/workflows/ci.yml/badge.svg)](https://github.com/Vanshika17-05/PRism/actions/workflows/ci.yml)
+
 PRism is a portfolio-grade AI pull-request reviewer. A GitHub App receives signed webhook events, Node orchestrates GitHub and free local Ollama review, a Python intelligence service adds vector memory and deterministic code metrics, and a claymorphism React dashboard turns the results into engineering signals.
 
 ## Architecture

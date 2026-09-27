@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { LayoutDashboard, GitPullRequest, Github, Settings, LogOut, Moon, Sun } from "lucide-react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { MorphingTabs } from "@/components/effects/MorphingTabs";

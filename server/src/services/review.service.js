@@ -30,12 +30,13 @@ function summaryBody(summary, findings) {
 export async function processPullRequestReview({ repository, pullRequest, deliveryId, queueWaitMs = 0 }) {
   const startedAt = Date.now();
   let review;
+  let budgetExceeded = false;
   try {
     const month = new Date().toISOString().slice(0, 7);
     if (repository.settings.budgetMonth !== month) {
       repository.settings.tokensUsedThisMonth = 0; repository.settings.budgetMonth = month; await repository.save();
     }
-    const budgetExceeded = repository.settings.tokensUsedThisMonth >= repository.settings.monthlyTokenBudget;
+    budgetExceeded = repository.settings.tokensUsedThisMonth >= repository.settings.monthlyTokenBudget;
     review = await Review.create({
       repository: repository.id, prNumber: pullRequest.number, prTitle: pullRequest.title, prUrl: pullRequest.html_url,
       prAuthor: pullRequest.user?.login || "unknown", headSha: pullRequest.head.sha, deliveryId, status: "processing"
