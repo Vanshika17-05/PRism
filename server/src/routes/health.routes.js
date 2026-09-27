@@ -9,6 +9,6 @@ healthRouter.get("/", (_req, res) =>
     uptimeSeconds: Math.floor(process.uptime()),
     database: databaseState(),
     mode: env.USE_MOCKS ? "mock" : "live",
-    aiProvider: env.USE_MOCKS ? "mock" : "ollama-local",
+    aiProvider: env.USE_MOCKS ? "mock" : "multi-provider",
   }),
 );

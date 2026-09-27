@@ -2,12 +2,12 @@
 
 [![CI](https://github.com/Vanshika17-05/PRism/actions/workflows/ci.yml/badge.svg)](https://github.com/Vanshika17-05/PRism/actions/workflows/ci.yml)
 
-PRism is a portfolio-grade AI pull-request reviewer. A GitHub App receives signed webhook events, Node orchestrates GitHub and free local Ollama review, a Python intelligence service adds vector memory and deterministic code metrics, and a claymorphism React dashboard turns the results into engineering signals.
+PRism is a portfolio-grade AI pull-request reviewer. A GitHub App receives signed webhook events, Node orchestrates multi-provider AI review, a Python intelligence service adds vector memory and deterministic code metrics, and a claymorphism React dashboard turns the results into engineering signals.
 
 ## Architecture
 
 ```text
-GitHub webhook -> Express orchestration -> local Ollama structured review
+GitHub webhook -> Express orchestration -> configured AI provider
                        |                         |
                        +-> FastAPI/Chroma -------+-> validated GitHub review
                                |
@@ -16,7 +16,7 @@ GitHub webhook -> Express orchestration -> local Ollama structured review
 MongoDB <- repositories, users, reviews -> React dashboard
 ```
 
-Node owns authentication, GitHub App integration, Ollama calls, persistence, API orchestration, and ESLint analysis for JavaScript/TypeScript. Python deliberately owns local vector similarity and Python static metrics: Chroma remembers related findings and learned non-issues; Radon measures complexity and Pyflakes reports deterministic errors. Python enrichment is optional at runtime—if it is unavailable, the GitHub review still completes.
+Node owns authentication, GitHub App integration, AI-provider calls, persistence, API orchestration, and ESLint analysis for JavaScript/TypeScript. Python deliberately owns local vector similarity and Python static metrics: Chroma remembers related findings and learned non-issues; Radon measures complexity and Pyflakes reports deterministic errors. Python enrichment is optional at runtime—if it is unavailable, the GitHub review still completes.
 
 ## Run with Docker (recommended)
 
@@ -24,7 +24,7 @@ Node owns authentication, GitHub App integration, Ollama calls, persistence, API
 docker compose up --build
 ```
 
-The stack starts MongoDB, Redis, Ollama, the Python intelligence service, the Node API, the Vite client, and the Next.js badge service. Open `http://localhost:4100` for the unified production-style app, `http://localhost:5173` for the standalone client, and `http://localhost:3000/api/badge/<repoId>.svg` for badges. Persistent Docker volumes retain Mongo data, Redis jobs, Chroma memory, SQLite analytics, raw diffs, and reports.
+The stack starts MongoDB, Redis, the Python intelligence service, the Node API, the Vite client, and the Next.js badge service. Open `http://localhost:4100` for the unified production-style app, `http://localhost:5173` for the standalone client, and `http://localhost:3000/api/badge/<repoId>.svg` for badges. Persistent Docker volumes retain Mongo data, Redis jobs, Chroma memory, SQLite analytics, raw diffs, and reports.
 
 ## Run locally from one link
 
@@ -64,7 +64,7 @@ The queue worker publishes `review:started`, `review:analyzing`, `review:complet
 
 ## Provider-agnostic AI
 
-Each repository can select OpenAI, Gemini, or Claude. All strategies normalize to the same review contract. OpenAI mode uses local Ollama when `OPENAI_API_KEY` is absent, so the default setup remains free and cannot make a paid API request. Gemini and Claude require their corresponding keys before they can be selected successfully.
+Each repository can select OpenAI, Gemini, or Claude. All strategies normalize to the same review contract, and each provider requires its corresponding API key before it can be used.
 
 ## Reporting, SQL, and object storage
 
@@ -102,8 +102,7 @@ Copy `server/.env.example` to `server/.env`, set `USE_MOCKS=false`, and configur
 - `GITHUB_APP_ID`
 - `GITHUB_APP_PRIVATE_KEY`
 - `GITHUB_WEBHOOK_SECRET`
-- `OLLAMA_BASE_URL`
-- `OLLAMA_MODEL` (defaults to `qwen2.5-coder:7b`)
+- The API key and model variables for each AI provider you enable
 - `PYTHON_SERVICE_URL`
 - `REDIS_URL` (local Redis or a Redis Cloud free-tier URL)
 - `REVIEW_CONCURRENCY` (defaults to `2`)
@@ -154,21 +153,21 @@ pnpm --filter @prism/server test
 pnpm --filter @prism/client build
 ```
 
-Docker Compose is optional and starts MongoDB, Redis, Ollama, the API, and the Python service. Without Docker, install Redis locally or use a Redis Cloud free-tier database and set `REDIS_URL`. Mock mode uses an in-memory queue so the dashboard remains usable without Redis. GitHub App credentials are required for live PR review, but no paid AI API is used.
+Docker Compose is optional and starts MongoDB, Redis, the API, and the Python service. Without Docker, install Redis locally or use a Redis Cloud free-tier database and set `REDIS_URL`. Mock mode uses an in-memory queue so the dashboard remains usable without Redis. GitHub App credentials are required for live PR review; AI-provider billing depends on the provider account and model you configure.
 
 ## Security and reliability
 
 - Raw-body HMAC SHA-256 webhook verification with timing-safe comparison
 - Immediate `202` acknowledgement with a BullMQ/Redis review queue
 - Three exponential-backoff attempts, MongoDB dead-letter storage, and dashboard retry/dismiss controls
-- Configurable worker concurrency and token-bucket limits around GitHub and local-AI calls
+- Configurable worker concurrency and token-bucket limits around GitHub and AI-provider calls
 - AsyncLocalStorage request IDs across webhook, queue worker, API, and structured logs
 - Per-repository monthly token budgets with deterministic-only fallback
 - Isolated manifest-only dependency auditing for changed npm lockfiles
 - Delivery and commit-level idempotency
 - Diff size/binary/lockfile filtering and valid-line verification
 - GitHub OAuth with CSRF state validation and 7-day JWTs in HTTP-only cookies
-- Ollama JSON mode and schema validation with no paid API calls
+- Normalized structured output and schema validation across AI providers
 - Graceful degradation when the Python enrichment service is unavailable
 - Parallel AI and deterministic lint analysis with explicit source attribution
 - Vector suppression is limited to AI judgments; lint violations cannot be dismissed as false positives

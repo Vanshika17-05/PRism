@@ -24,8 +24,6 @@ const schema = z
     GITHUB_APP_CLIENT_ID: z.string().optional(),
     GITHUB_APP_CLIENT_SECRET: z.string().optional(),
     APP_URL: z.string().url().default("http://localhost:4100"),
-    OLLAMA_BASE_URL: z.string().url().default("http://127.0.0.1:11434"),
-    OLLAMA_MODEL: z.string().min(1).default("qwen2.5-coder:7b"),
     OPENAI_API_KEY: z.string().optional(),
     OPENAI_MODEL: z.string().default("gpt-4.1-mini"),
     GEMINI_API_KEY: z.string().optional(),

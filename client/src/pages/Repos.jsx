@@ -171,13 +171,13 @@ function SettingsDrawer({ repo, onClose }) {
               }))
             }
           >
-            <option value="openai">OpenAI (local Ollama fallback)</option>
+            <option value="openai">OpenAI</option>
             <option value="gemini">Google Gemini</option>
             <option value="claude">Anthropic Claude</option>
           </select>
           <p className="mt-2 text-xs text-muted">
-            Vendor APIs require their matching key. OpenAI mode stays local
-            through Ollama when no OpenAI key is configured.
+            Each provider requires its matching API key in the server
+            environment.
           </p>
         </section>
         <section className="clay-control p-5">

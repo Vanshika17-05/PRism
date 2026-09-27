@@ -111,7 +111,7 @@ const features = [
   [
     Bot,
     "AI code review",
-    "Structured, line-aware findings powered locally by Ollama.",
+    "Structured, line-aware findings from your configured AI provider.",
   ],
   [
     GitPullRequest,
@@ -154,7 +154,7 @@ const tech = [
   [Server, "Node"],
   [Github, "GitHub"],
   [Database, "MongoDB"],
-  [Bot, "Ollama"],
+  [Bot, "Multi-provider AI"],
   [Code2, "Python"],
 ];
 function Logo() {
@@ -498,8 +498,7 @@ export default function Landing() {
                 Make every review compound.
               </h2>
               <p className="mx-auto mt-4 max-w-xl text-muted">
-                Run locally, then connect GitHub and Ollama when your team is
-                ready.
+                Connect GitHub and choose the AI provider that fits your team.
               </p>
               <p className="mt-8 text-sm font-bold text-accent-dark">
                 Free local setup · connect GitHub only when you are ready

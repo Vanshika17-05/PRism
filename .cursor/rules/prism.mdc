@@ -11,7 +11,7 @@ alwaysApply: true
 - Scope repository and review operations to GitHub installation data.
 - Make webhook handling idempotent. Respond within GitHub's timeout and contain background failures.
 - Only post inline findings whose new-file line exists in the parsed patch.
-- Use local Ollama as the default AI provider so normal development creates no API bill.
+- Use the repository's configured OpenAI, Gemini, or Claude provider; never silently fall back to an unconfigured provider.
 - Never log secrets, private keys, webhook bodies, or repository source.
 - The future client uses #0A0B0D background, #111318 surfaces, #171A21 elevated surfaces, #1F232B borders, #8B93A1 muted text, #E8EAED primary text, and #00D4AA accent.
 - Use restrained motion, hairline borders, generous spacing, Inter, Lucide icons, responsive layouts, skeletons, empty states, and accessible focus states.

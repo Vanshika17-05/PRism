@@ -45,34 +45,24 @@ async function proposeWithProvider(provider, prompt) {
     );
     return body.content?.find((part) => part.type === "text")?.text || "";
   }
-  if (env.OPENAI_API_KEY) {
-    const body = await providerFetch(
-      "https://api.openai.com/v1/chat/completions",
-      {
-        method: "POST",
-        headers: {
-          authorization: `Bearer ${env.OPENAI_API_KEY}`,
-          "content-type": "application/json",
-        },
-        body: JSON.stringify({
-          model: env.OPENAI_MODEL,
-          messages: [{ role: "user", content: prompt }],
-        }),
-      },
-      env.AI_TIMEOUT_MS,
-    );
-    return body.choices?.[0]?.message?.content || "";
-  }
+  if (!env.OPENAI_API_KEY)
+    throw new Error("OPENAI_API_KEY is not configured");
   const body = await providerFetch(
-    `${env.OLLAMA_BASE_URL}/api/generate`,
+    "https://api.openai.com/v1/chat/completions",
     {
       method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ model: env.OLLAMA_MODEL, prompt, stream: false }),
+      headers: {
+        authorization: `Bearer ${env.OPENAI_API_KEY}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        model: env.OPENAI_MODEL,
+        messages: [{ role: "user", content: prompt }],
+      }),
     },
     env.AI_TIMEOUT_MS,
   );
-  return body.response || "";
+  return body.choices?.[0]?.message?.content || "";
 }
 
 export async function runFixAgent({ provider, finding, fileContent }) {
