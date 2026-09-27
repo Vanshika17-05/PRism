@@ -17,6 +17,9 @@ jobs:
   javascript:
     name: JavaScript lint, test, and build
     runs-on: ubuntu-latest
+    env:
+      NODE_ENV: test
+      USE_MOCKS: "true"
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
