@@ -39,6 +39,14 @@ test("health, auth, and protected dashboard API", () =>
     assert.equal((await fetch(`${base}/api/repos`)).status, 401);
     const config = await (await fetch(`${base}/api/auth/config`)).json();
     assert.equal(typeof config.githubConfigured, "boolean");
+    assert.equal(config.mockLoginAvailable, true);
+    const mockLogin = await fetch(`${base}/api/auth/mock`, { method: "POST" });
+    assert.equal(mockLogin.status, 200);
+    assert.equal((await mockLogin.json()).user.username, "local-engineer");
+    const cookie = mockLogin.headers.get("set-cookie").split(";")[0];
+    const mockMe = await fetch(`${base}/api/auth/me`, { headers: { cookie } });
+    assert.equal(mockMe.status, 200);
+    assert.equal((await mockMe.json()).user.username, "local-engineer");
     const repos = await fetch(`${base}/api/repos`, {
       headers: { authorization: `Bearer ${token}` },
     });

@@ -4,6 +4,7 @@ import {
   beginGithubAuth,
   githubCallback,
   logout,
+  mockLogin,
   me,
   removeOtherSessions,
   removeSession,
@@ -17,6 +18,7 @@ import { authenticatedUserLimiter } from "../middleware/rateLimits.js";
 export const authRouter = Router();
 authRouter.get("/config", authConfig);
 authRouter.get("/github", beginGithubAuth);
+authRouter.post("/mock", asyncHandler(mockLogin));
 authRouter.get(
   "/github/callback",
   oauthCallbackLimiter,

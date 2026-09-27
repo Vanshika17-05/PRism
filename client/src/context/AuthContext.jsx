@@ -16,6 +16,11 @@ export function AuthProvider({ children }) {
     () => ({
       user,
       loading,
+      async mockLogin() {
+        const { data } = await api.post("/api/auth/mock");
+        setUser(data.user);
+        return data.user;
+      },
       async logout() {
         try {
           await api.post("/api/auth/logout");

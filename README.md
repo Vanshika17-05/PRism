@@ -35,9 +35,9 @@ pnpm install
 pnpm start
 ```
 
-Open `http://localhost:4100`. Express serves both the compiled React application and `/api` from this single origin. Configure `GITHUB_APP_CLIENT_ID`, `GITHUB_APP_CLIENT_SECRET`, and set the OAuth callback URL to `http://localhost:4100/api/auth/github/callback`. If these credentials are absent, the login page clearly reports that GitHub sign-in is not configured; there is no fake password fallback.
+Open `http://localhost:4100`. Express serves both the compiled React application and `/api` from this single origin. For a real GitHub login, configure `GITHUB_APP_CLIENT_ID`, `GITHUB_APP_CLIENT_SECRET`, and set the OAuth callback URL to `http://localhost:4100/api/auth/github/callback`.
 
-The checked-in examples default to `USE_MOCKS=true`; local `.env` files are ignored. Mock infrastructure mode provides realistic repository and review data, while authentication still uses real GitHub OAuth.
+The checked-in examples default to `USE_MOCKS=true`; local `.env` files are ignored. In development, the login page shows **Enter local demo**, which creates a local HTTP-only session and loads realistic repository and review data without MongoDB, Redis, GitHub, or AI credentials. This route is disabled in production. Mock mode never calls Gemini, OpenAI, Claude, or another paid AI provider.
 
 Health check:
 
