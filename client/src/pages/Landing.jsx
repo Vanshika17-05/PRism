@@ -270,7 +270,6 @@ export default function Landing() {
             >
               {theme === "light" ? <Moon size={17} /> : <Sun size={17} />}
             </button>
-            <LandingMagneticLink>Sign in with GitHub</LandingMagneticLink>
           </div>
           <button
             className="clay-icon md:hidden"
@@ -289,9 +288,6 @@ export default function Landing() {
               <a href="#how" onClick={() => setOpen(false)}>
                 How it works
               </a>
-              <Link to="/login" className="clay-button py-3 text-center">
-                Sign in with GitHub
-              </Link>
             </div>
           </div>
         )}
@@ -502,12 +498,9 @@ export default function Landing() {
                 Run locally, then connect GitHub and Ollama when your team is
                 ready.
               </p>
-              <Link
-                to="/login"
-                className="clay-button mt-8 inline-flex items-center gap-2 px-6 py-3 font-bold"
-              >
-                Sign in with GitHub <ArrowRight size={17} />
-              </Link>
+              <p className="mt-8 text-sm font-bold text-accent-dark">
+                Free local setup · connect GitHub only when you are ready
+              </p>
             </div>
           </div>
         </section>
