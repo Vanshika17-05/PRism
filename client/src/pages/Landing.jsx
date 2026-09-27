@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   motion,
@@ -177,7 +177,7 @@ function DashboardPreview() {
     target,
     offset: ["start end", "end start"],
   });
-  const parallaxY = useTransform(scrollYProgress, [0, 1], [28, -28]);
+  const parallaxY = useTransform(scrollYProgress, [0, 1], [14, -14]);
   return (
     <motion.div
       ref={target}
@@ -252,6 +252,9 @@ export default function Landing() {
   const [open, setOpen] = useState(false);
   const reduce = useReducedMotion();
   const { theme, toggleTheme } = useTheme();
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+  }, []);
   return (
     <div className="min-h-screen overflow-hidden bg-bg text-primary">
       <header className="fixed inset-x-0 top-0 z-50 border-b border-border bg-bg/80 backdrop-blur-xl">
@@ -293,7 +296,7 @@ export default function Landing() {
         )}
       </header>
       <main>
-        <section className="landing-hero-mesh relative px-5 pb-20 pt-36 text-center">
+        <section className="landing-hero-mesh relative px-5 pb-12 pt-28 text-center">
           <GradientMeshBackground />
           <div className="relative mx-auto max-w-5xl">
             <motion.div
@@ -323,12 +326,12 @@ export default function Landing() {
                 <Github size={17} /> View source
               </a>
             </div>
-            <div className="mt-16">
+            <div className="mt-10">
               <DashboardPreview />
             </div>
           </div>
         </section>
-        <section className="border-y border-border py-8">
+        <section className="border-y border-border py-6">
           <p className="text-center text-xs font-bold uppercase tracking-[.2em] text-muted">
             Built with a production-minded stack
           </p>
