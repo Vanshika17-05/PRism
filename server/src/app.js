@@ -4,7 +4,6 @@ import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import cors from "cors";
 import helmet from "helmet";
-import rateLimit from "express-rate-limit";
 import pinoHttp from "pino-http";
 import { env } from "./config/env.js";
 import { logger } from "./utils/logger.js";
@@ -22,6 +21,7 @@ import { requestContextMiddleware } from "./utils/requestContext.js";
 import { authMiddleware } from "./middleware/auth.js";
 import { notFound } from "./middleware/notFound.js";
 import { errorHandler } from "./middleware/errorHandler.js";
+import { authenticatedUserLimiter, globalApiLimiter, webhookCeilingLimiter } from "./middleware/rateLimits.js";
 
 export function createApp() {
   const app = express();
@@ -37,30 +37,23 @@ export function createApp() {
   app.use(pinoHttp({ logger }));
   app.use(
     "/api/webhooks/github",
+    webhookCeilingLimiter,
     express.raw({ type: "application/json", limit: "2mb" }),
     webhookRouter,
   );
   app.use(express.json({ limit: "200kb" }));
-  app.use(
-    "/api",
-    rateLimit({
-      windowMs: 60_000,
-      limit: 120,
-      standardHeaders: "draft-8",
-      legacyHeaders: false,
-    }),
-  );
+  app.use("/api", globalApiLimiter);
   app.use("/api/health", healthRouter);
   app.use("/api/auth", authRouter);
   app.use("/api/public", publicRouter);
-  app.use("/api/organizations", authMiddleware, organizationRouter);
-  app.use("/api/invites", authMiddleware, inviteRouter);
-  app.use("/api/reviews", authMiddleware, reviewRouter);
-  app.use("/api/repos", authMiddleware, repoRouter);
-  app.use("/api/failed-reviews", authMiddleware, failedReviewRouter);
-  app.use("/api/storage", authMiddleware, storageRouter);
+  app.use("/api/organizations", authMiddleware, authenticatedUserLimiter, organizationRouter);
+  app.use("/api/invites", authMiddleware, authenticatedUserLimiter, inviteRouter);
+  app.use("/api/reviews", authMiddleware, authenticatedUserLimiter, reviewRouter);
+  app.use("/api/repos", authMiddleware, authenticatedUserLimiter, repoRouter);
+  app.use("/api/failed-reviews", authMiddleware, authenticatedUserLimiter, failedReviewRouter);
+  app.use("/api/storage", authMiddleware, authenticatedUserLimiter, storageRouter);
   // Operational metrics are authenticated because queue/error data can reveal internal workload patterns.
-  app.use("/api/metrics", authMiddleware, metricsRouter);
+  app.use("/api/metrics", authMiddleware, authenticatedUserLimiter, metricsRouter);
   if (existsSync(clientDist)) {
     app.use(
       express.static(clientDist, {

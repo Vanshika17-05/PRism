@@ -10,10 +10,14 @@ api.interceptors.request.use((config) => {
 });
 api.interceptors.response.use(
   (response) => response,
-  (error) =>
-    Promise.reject(
-      new Error(
-        error.response?.data?.error || error.message || "Request failed",
-      ),
-    ),
+  (error) => {
+    const normalized = new Error(
+      error.response?.status === 429
+        ? "You're doing that a bit fast — try again in a moment"
+        : error.response?.data?.error || error.message || "Request failed",
+    );
+    normalized.status = error.response?.status;
+    normalized.retryAfter = error.response?.data?.retryAfter;
+    return Promise.reject(normalized);
+  },
 );

@@ -93,6 +93,12 @@ An AI finding can run a small agent loop: fetch the current file from GitHub, pr
 
 Set `APP_URL`, `CLIENT_URL`, and `PRISM_API_URL` to the deployed URLs. Actual public URLs should replace the placeholders after the corresponding Vercel and Render projects are connected; no paid resource is created automatically by this repository.
 
+For the Vercel badge project, also set `UPSTASH_REDIS_REST_URL` and
+`UPSTASH_REDIS_REST_TOKEN`. The badge endpoint allows 30 requests per minute
+per IP and is publicly cached for five minutes. Local development fails open
+when those two variables are absent; deployed environments should always set
+both.
+
 ## Live integration configuration
 
 Copy `server/.env.example` to `server/.env`, set `USE_MOCKS=false`, and configure:

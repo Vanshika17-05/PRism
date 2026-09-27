@@ -1,5 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, CheckCircle2, RotateCcw, Trash2 } from "lucide-react";
+import {
+  AlertTriangle,
+  CheckCircle2,
+  Laptop,
+  RotateCcw,
+  Trash2,
+} from "lucide-react";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
 import { ShimmerSkeleton } from "@/components/effects/ShimmerSkeleton";
@@ -70,6 +76,28 @@ export default function SettingsPage() {
     },
     onError: (error) => toast.error(error.message),
   });
+  const sessions = useQuery({
+    queryKey: ["auth-sessions"],
+    queryFn: async () => (await api.get("/api/auth/sessions")).data.sessions,
+  });
+  const refreshSessions = () =>
+    queryClient.invalidateQueries({ queryKey: ["auth-sessions"] });
+  const revoke = useMutation({
+    mutationFn: (jti) => api.delete(`/api/auth/sessions/${jti}`),
+    onSuccess: () => {
+      toast.success("Session revoked");
+      refreshSessions();
+    },
+    onError: (error) => toast.error(error.message),
+  });
+  const revokeOthers = useMutation({
+    mutationFn: () => api.post("/api/auth/sessions/revoke-others"),
+    onSuccess: () => {
+      toast.success("Other sessions revoked");
+      refreshSessions();
+    },
+    onError: (error) => toast.error(error.message),
+  });
   return (
     <div>
       <p className="text-sm font-bold text-accent-dark">SYSTEM SETTINGS</p>
@@ -78,7 +106,65 @@ export default function SettingsPage() {
         Recover permanently failed pull-request reviews without losing their
         original payload.
       </p>
-      <Link className="clay-control mt-5 inline-flex px-4 py-2 text-sm font-bold text-accent-dark" to="/dashboard/settings/team">Manage team & roles</Link>
+      <Link
+        className="clay-control mt-5 inline-flex px-4 py-2 text-sm font-bold text-accent-dark"
+        to="/dashboard/settings/team"
+      >
+        Manage team & roles
+      </Link>
+      <section className="clay-card mt-8 p-6">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <span className="clay-icon text-accent">
+              <Laptop size={19} />
+            </span>
+            <div>
+              <h2 className="text-xl font-black">Active sessions</h2>
+              <p className="text-sm text-muted">
+                Devices currently signed in to your account.
+              </p>
+            </div>
+          </div>
+          <button
+            className="clay-control px-4 py-2 text-sm font-bold text-accent-dark"
+            disabled={revokeOthers.isPending}
+            onClick={() => revokeOthers.mutate()}
+          >
+            Revoke all other sessions
+          </button>
+        </div>
+        <div className="mt-5 space-y-3">
+          {sessions.isLoading ? (
+            <ShimmerSkeleton className="h-20" />
+          ) : (
+            sessions.data?.map((session) => (
+              <div
+                key={session.jti}
+                className="clay-control flex flex-wrap items-center justify-between gap-3 p-4"
+              >
+                <div>
+                  <p className="font-bold">
+                    {session.current ? "This device" : "Signed-in device"}
+                  </p>
+                  <p className="mt-1 max-w-2xl truncate text-xs text-muted">
+                    {session.userAgent}
+                  </p>
+                  <p className="mt-1 text-xs text-muted">
+                    Signed in {new Date(session.issuedAt).toLocaleString()}
+                  </p>
+                </div>
+                <button
+                  className="flex items-center gap-2 text-sm font-bold text-high"
+                  disabled={revoke.isPending}
+                  onClick={() => revoke.mutate(session.jti)}
+                >
+                  <Trash2 size={15} /> Revoke
+                </button>
+              </div>
+            ))
+          )}
+        </div>
+      </section>
       <section className="clay-card mt-8 p-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">

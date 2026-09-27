@@ -1,3 +1,5 @@
+import { badgeRateLimit } from "../../../../lib/rateLimit";
+
 const escapeXml = (value) =>
   String(value).replace(
     /[<>&"']/g,
@@ -10,7 +12,30 @@ const escapeXml = (value) =>
         "'": "&apos;",
       })[char],
   );
-export async function GET(_request, { params }) {
+export async function GET(request, { params }) {
+  const ip =
+    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+    request.headers.get("x-real-ip") ||
+    "unknown";
+  if (badgeRateLimit) {
+    const result = await badgeRateLimit.limit(ip);
+    if (!result.success) {
+      const retryAfter = Math.max(
+        1,
+        Math.ceil((result.reset - Date.now()) / 1000),
+      );
+      return Response.json(
+        { error: "rate_limit_exceeded", retryAfter },
+        {
+          status: 429,
+          headers: {
+            "Retry-After": String(retryAfter),
+            "Cache-Control": "no-store",
+          },
+        },
+      );
+    }
+  }
   const { repoId } = await params;
   const base = process.env.PRISM_API_URL || "http://localhost:4100";
   const response = await fetch(
@@ -30,7 +55,7 @@ export async function GET(_request, { params }) {
     status: response.ok ? 200 : 503,
     headers: {
       "content-type": "image/svg+xml; charset=utf-8",
-      "cache-control": "public, s-maxage=60, stale-while-revalidate=300",
+      "cache-control": "public, max-age=300, s-maxage=300",
     },
   });
 }

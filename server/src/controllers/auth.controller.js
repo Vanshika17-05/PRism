@@ -3,6 +3,12 @@ import jwt from "jsonwebtoken";
 import { env } from "../config/env.js";
 import { User } from "../models/User.model.js";
 import { Organization } from "../models/Organization.model.js";
+import {
+  createSession,
+  listSessions,
+  revokeOtherSessions,
+  revokeSession,
+} from "../services/session.service.js";
 
 const sessionCookie = "prism_session";
 const stateCookie = "prism_oauth_state";
@@ -35,11 +41,17 @@ function publicUser(user) {
   };
 }
 
-function issueToken(user) {
-  return jwt.sign(publicUser(user), env.JWT_SECRET, { expiresIn: "7d" });
+async function issueToken(user, userAgent) {
+  const session = await createSession(user._id, userAgent);
+  return jwt.sign({ ...publicUser(user), jti: session.jti }, env.JWT_SECRET, {
+    expiresIn: "7d",
+  });
 }
 function workspaceSlug(username, githubId) {
-  const base = `${username}-workspace`.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  const base = `${username}-workspace`
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
   return `${base}-${githubId}`;
 }
 export const oauthConfigured = () =>
@@ -135,7 +147,7 @@ export async function githubCallback(req, res) {
     : await User.findOneAndUpdate({ githubId: profile.id }, identity, {
         upsert: true,
         new: true,
-      setDefaultsOnInsert: true,
+        setDefaultsOnInsert: true,
       });
   if (!env.USE_MOCKS)
     await Organization.findOneAndUpdate(
@@ -151,17 +163,40 @@ export async function githubCallback(req, res) {
       { upsert: true, new: true },
     );
   res.clearCookie(stateCookie, cookieBase);
-  res.cookie(sessionCookie, issueToken(user), {
+  res.cookie(sessionCookie, await issueToken(user, req.get("user-agent")), {
     ...cookieBase,
     maxAge: 7 * 24 * 60 * 60_000,
   });
   return res.redirect("/dashboard/overview");
 }
 
-export function logout(_req, res) {
+export async function logout(req, res) {
+  await revokeSession(req.user._id || req.user.id, req.user.jti);
   res.clearCookie(sessionCookie, cookieBase);
   return res.status(204).end();
 }
 export function me(req, res) {
   return res.json({ user: req.user });
+}
+
+export async function sessions(req, res) {
+  const items = await listSessions(req.user._id || req.user.id);
+  return res.json({
+    sessions: items.map((session) => ({
+      ...session,
+      current: session.jti === req.user.jti,
+    })),
+  });
+}
+
+export async function removeSession(req, res) {
+  await revokeSession(req.user._id || req.user.id, req.params.jti);
+  if (req.params.jti === req.user.jti)
+    res.clearCookie(sessionCookie, cookieBase);
+  return res.status(204).end();
+}
+
+export async function removeOtherSessions(req, res) {
+  await revokeOtherSessions(req.user._id || req.user.id, req.user.jti);
+  return res.status(204).end();
 }

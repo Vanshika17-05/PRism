@@ -9,9 +9,9 @@
     "test": "node --test"
   },
   "dependencies": {
-    "@prism/shared-types": "workspace:*",
     "@aws-sdk/client-s3": "^3.1141.0",
     "@aws-sdk/s3-request-presigner": "^3.1141.0",
+    "@prism/shared-types": "workspace:*",
     "@typescript-eslint/parser": "7.18.0",
     "better-sqlite3": "^13.0.3",
     "bullmq": "^6.3.9",
@@ -22,12 +22,14 @@
     "express": "^5.1.0",
     "express-rate-limit": "^8.0.0",
     "helmet": "^8.1.0",
+    "ioredis": "^6.0.0",
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^8.15.0",
     "octokit": "^4.1.4",
     "pdfkit": "^0.20.2",
     "pino": "^9.7.0",
     "pino-http": "^10.4.0",
+    "rate-limit-redis": "^6.0.1",
     "socket.io": "^4.8.4",
     "zod": "^3.25.0"
   },

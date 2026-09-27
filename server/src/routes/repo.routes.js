@@ -10,6 +10,7 @@ import {
 } from "../controllers/repo.controller.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { roleMiddleware } from "../middleware/role.js";
+import { expensiveUserLimiter } from "../middleware/rateLimits.js";
 
 export const repoRouter = Router();
 repoRouter.get("/", roleMiddleware("member"), asyncHandler(listRepos));
@@ -22,4 +23,4 @@ repoRouter.delete(
   asyncHandler(deleteSuppression),
 );
 repoRouter.get("/:id/reports.csv", roleMiddleware("member", "repo"), asyncHandler(csvReport));
-repoRouter.post("/:id/reports.pdf", roleMiddleware("member", "repo"), asyncHandler(pdfReport));
+repoRouter.post("/:id/reports.pdf", roleMiddleware("member", "repo"), expensiveUserLimiter, asyncHandler(pdfReport));
