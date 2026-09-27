@@ -292,6 +292,53 @@ test("an invited signed-in user joins the organization and the invite is consume
     );
   }));
 
+test("audit log is organization-scoped, filterable, and visible to members", () =>
+  withServer(async (base) => {
+    const member = mockOrganizations[0].members[0];
+    const originalRole = member.role;
+    const ownerHeaders = {
+      authorization: `Bearer ${token}`,
+      "content-type": "application/json",
+    };
+    const created = await fetch(
+      `${base}/api/organizations/${mockOrganizations[0]._id}/invite`,
+      {
+        method: "POST",
+        headers: ownerHeaders,
+        body: JSON.stringify({ email: "audit@example.com", role: "member" }),
+      },
+    );
+    assert.equal(created.status, 201);
+    member.role = "member";
+    try {
+      const headers = {
+        authorization: `Bearer ${token}`,
+        "x-organization-id": mockOrganizations[0]._id,
+      };
+      const response = await fetch(
+        `${base}/api/organizations/${mockOrganizations[0]._id}/audit-log?action=member.invited`,
+        { headers },
+      );
+      assert.equal(response.status, 200);
+      const body = await response.json();
+      assert.ok(body.items.length >= 1);
+      assert.ok(body.items.every((entry) => entry.action === "member.invited"));
+      assert.equal(body.pagination.page, 1);
+
+      const foreign = await fetch(
+        `${base}/api/organizations/65f000000000000000009999/audit-log`,
+        { headers },
+      );
+      assert.equal(foreign.status, 403);
+    } finally {
+      member.role = originalRole;
+      const index = mockInvites.findIndex(
+        (invite) => invite.email === "audit@example.com",
+      );
+      if (index >= 0) mockInvites.splice(index, 1);
+    }
+  }));
+
 test("global API limiter returns JSON 429 with Retry-After", () =>
   withServer(async (base) => {
     let response;

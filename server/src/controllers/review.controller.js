@@ -2,7 +2,11 @@ import mongoose from "mongoose";
 import { z } from "zod";
 import { Review } from "../models/Review.model.js";
 import { env } from "../config/env.js";
-import { mockRepositories, mockReviews, mockSuppressions } from "../data/mockData.js";
+import {
+  mockRepositories,
+  mockReviews,
+  mockSuppressions,
+} from "../data/mockData.js";
 import { storeKnownNonIssue } from "../services/python.service.js";
 import { logger } from "../utils/logger.js";
 import {
@@ -11,6 +15,7 @@ import {
   postSuggestionComment,
 } from "../services/github.service.js";
 import { runFixAgent } from "../services/fix-agent.service.js";
+import { logAudit } from "../services/audit.service.js";
 /** @typedef {import("@prism/shared-types").Review} ReviewContract */
 
 const dismissSchema = z.object({
@@ -48,7 +53,9 @@ export async function listReviews(req, res) {
       },
     });
   }
-  const organizationRepos = await (await import("../models/Repository.model.js")).Repository.find({ organizationId: req.organization._id }).distinct("_id");
+  const organizationRepos = await (
+    await import("../models/Repository.model.js")
+  ).Repository.find({ organizationId: req.organization._id }).distinct("_id");
   const filter = { repository: { $in: organizationRepos } };
   if (query.status) filter.status = query.status;
   if (query.repo && mongoose.isValidObjectId(query.repo))
@@ -104,6 +111,10 @@ export async function dismissFinding(req, res) {
       return res
         .status(400)
         .json({ error: "Deterministic findings cannot be suppressed" });
+    const before = {
+      dismissed: Boolean(finding.dismissed),
+      dismissalReason: finding.dismissalReason || "",
+    };
     finding.dismissed = input.dismissed;
     finding.dismissalReason = input.dismissed ? input.reason : "";
     if (
@@ -120,6 +131,18 @@ export async function dismissFinding(req, res) {
         reason: input.reason,
         type: "known_non_issue",
       });
+    await logAudit({
+      req,
+      action: "finding.dismissed",
+      targetType: "finding",
+      targetId: finding._id,
+      before,
+      after: {
+        dismissed: finding.dismissed,
+        dismissalReason: finding.dismissalReason,
+        reviewId: review._id,
+      },
+    });
     return res.json({ finding, learningStored: input.dismissed });
   }
   if (
@@ -135,6 +158,10 @@ export async function dismissFinding(req, res) {
     return res
       .status(400)
       .json({ error: "Deterministic findings cannot be suppressed" });
+  const before = {
+    dismissed: Boolean(finding.dismissed),
+    dismissalReason: finding.dismissalReason || "",
+  };
   finding.dismissed = input.dismissed;
   finding.dismissalReason = input.dismissed ? input.reason : "";
   await review.save();
@@ -155,6 +182,18 @@ export async function dismissFinding(req, res) {
       );
     }
   }
+  await logAudit({
+    req,
+    action: "finding.dismissed",
+    targetType: "finding",
+    targetId: finding.id,
+    before,
+    after: {
+      dismissed: finding.dismissed,
+      dismissalReason: finding.dismissalReason,
+      reviewId: review.id,
+    },
+  });
   return res.json({ finding, learningStored });
 }
 
@@ -201,7 +240,16 @@ export async function applySuggestedFix(req, res) {
   const input = z
     .object({ suggestion: z.string().min(1).max(100_000) })
     .parse(req.body);
-  if (env.USE_MOCKS) return res.json({ posted: true });
+  if (env.USE_MOCKS) {
+    await logAudit({
+      req,
+      action: "suggestion.posted",
+      targetType: "finding",
+      targetId: req.params.findingId,
+      after: { reviewId: req.params.id },
+    });
+    return res.json({ posted: true });
+  }
   const review = await Review.findById(req.params.id).populate("repository");
   const finding = review?.findings.id(req.params.findingId);
   if (!finding) return res.status(404).json({ error: "Finding not found" });
@@ -215,6 +263,13 @@ export async function applySuggestedFix(req, res) {
     file: finding.file,
     line: finding.line,
     suggestion: input.suggestion,
+  });
+  await logAudit({
+    req,
+    action: "suggestion.posted",
+    targetType: "finding",
+    targetId: finding.id,
+    after: { reviewId: review.id, prNumber: review.prNumber },
   });
   res.json({ posted: true });
 }

@@ -4,6 +4,7 @@ import { env } from "../config/env.js";
 import { FailedReview } from "../models/FailedReview.model.js";
 import { mockFailedReviews } from "../data/mockData.js";
 import { enqueueReview } from "../queues/review.queue.js";
+import { logAudit } from "../services/audit.service.js";
 
 const querySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
@@ -49,6 +50,14 @@ export async function retryFailedReview(req, res) {
   if (env.USE_MOCKS)
     mockFailedReviews.splice(mockFailedReviews.indexOf(entry), 1);
   else await entry.deleteOne();
+  await logAudit({
+    req,
+    action: "review.retried",
+    targetType: "failed_review",
+    targetId: entry._id,
+    before: { attemptsMade: entry.attemptsMade, error: entry.error },
+    after: { jobId: String(job.id) },
+  });
   return res.status(202).json({ accepted: true, jobId: String(job.id) });
 }
 
@@ -59,13 +68,27 @@ export async function dismissFailedReview(req, res) {
     );
     if (index < 0)
       return res.status(404).json({ error: "Failed review not found" });
-    mockFailedReviews.splice(index, 1);
+    const [entry] = mockFailedReviews.splice(index, 1);
+    await logAudit({
+      req,
+      action: "failed_review.dismissed",
+      targetType: "failed_review",
+      targetId: entry._id,
+      before: { attemptsMade: entry.attemptsMade, error: entry.error },
+    });
     return res.status(204).end();
   }
-  if (
-    !mongoose.isValidObjectId(req.params.id) ||
-    !(await FailedReview.findByIdAndDelete(req.params.id))
-  )
+  if (!mongoose.isValidObjectId(req.params.id))
     return res.status(404).json({ error: "Failed review not found" });
+  const entry = await FailedReview.findById(req.params.id);
+  if (!entry) return res.status(404).json({ error: "Failed review not found" });
+  await entry.deleteOne();
+  await logAudit({
+    req,
+    action: "failed_review.dismissed",
+    targetType: "failed_review",
+    targetId: entry._id,
+    before: { attemptsMade: entry.attemptsMade, error: entry.error },
+  });
   return res.status(204).end();
 }

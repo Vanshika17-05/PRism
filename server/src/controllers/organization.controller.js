@@ -6,6 +6,7 @@ import { Invite } from "../models/Invite.model.js";
 import { User } from "../models/User.model.js";
 import { mockInvites, mockOrganizations } from "../data/mockOrganizations.js";
 import { logger } from "../utils/logger.js";
+import { logAudit } from "../services/audit.service.js";
 
 const inviteInput = z.object({
   email: z.string().email(),
@@ -64,16 +65,21 @@ export async function inviteMember(req, res) {
     },
     "Organization invite created",
   );
-  res
-    .status(201)
-    .json({
-      invite: {
-        email: saved.email,
-        role: saved.role,
-        expiresAt: saved.expiresAt,
-      },
-      inviteLink: `${env.APP_URL}/invite/${saved.token}`,
-    });
+  await logAudit({
+    req,
+    action: "member.invited",
+    targetType: "invite",
+    targetId: saved._id,
+    after: { email: saved.email, role: saved.role },
+  });
+  res.status(201).json({
+    invite: {
+      email: saved.email,
+      role: saved.role,
+      expiresAt: saved.expiresAt,
+    },
+    inviteLink: `${env.APP_URL}/invite/${saved.token}`,
+  });
 }
 export async function acceptInvite(req, res) {
   const invite = env.USE_MOCKS
@@ -125,12 +131,35 @@ export async function updateMemberRole(req, res) {
       (item) => String(item.userId) === req.params.userId,
     );
     if (!member) return res.status(404).json({ error: "Member not found" });
+    const before = { role: member.role };
     member.role = input.role;
-  } else
+    await logAudit({
+      req,
+      action: "member.role_changed",
+      targetType: "user",
+      targetId: req.params.userId,
+      before,
+      after: { role: input.role },
+    });
+  } else {
+    const member = req.organization.members.find(
+      (item) => String(item.userId) === req.params.userId,
+    );
+    if (!member) return res.status(404).json({ error: "Member not found" });
+    const before = { role: member.role };
     await Organization.updateOne(
       { _id: req.organization._id, "members.userId": req.params.userId },
       { $set: { "members.$.role": input.role } },
     );
+    await logAudit({
+      req,
+      action: "member.role_changed",
+      targetType: "user",
+      targetId: req.params.userId,
+      before,
+      after: { role: input.role },
+    });
+  }
   res.json({ updated: true });
 }
 export async function removeMember(req, res) {
@@ -138,6 +167,10 @@ export async function removeMember(req, res) {
     return res
       .status(400)
       .json({ error: "Organization owner cannot be removed" });
+  const member = req.organization.members.find(
+    (item) => String(item.userId) === req.params.userId,
+  );
+  if (!member) return res.status(404).json({ error: "Member not found" });
   if (env.USE_MOCKS)
     req.organization.members = req.organization.members.filter(
       (item) => String(item.userId) !== req.params.userId,
@@ -147,5 +180,12 @@ export async function removeMember(req, res) {
       { _id: req.organization._id },
       { $pull: { members: { userId: req.params.userId } } },
     );
+  await logAudit({
+    req,
+    action: "member.removed",
+    targetType: "user",
+    targetId: req.params.userId,
+    before: { role: member.role },
+  });
   res.json({ removed: true });
 }

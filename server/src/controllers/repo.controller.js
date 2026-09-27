@@ -13,6 +13,7 @@ import {
   deleteSuppressionPattern,
   listSuppressionPatterns,
 } from "../services/python.service.js";
+import { logAudit } from "../services/audit.service.js";
 export { csvReport, pdfReport } from "./report.controller.js";
 
 const settingsSchema = z.object({
@@ -38,9 +39,18 @@ export async function listRepos(req, res) {
         },
       },
     );
-  if (env.USE_MOCKS) return res.json({ repositories: mockRepositories.filter((repo) => repo.organizationId === String(req.organization._id)) });
+  if (env.USE_MOCKS)
+    return res.json({
+      repositories: mockRepositories.filter(
+        (repo) => repo.organizationId === String(req.organization._id),
+      ),
+    });
   res.json({
-    repositories: await Repository.find({ organizationId: req.organization._id }).sort({ fullName: 1 }).lean(),
+    repositories: await Repository.find({
+      organizationId: req.organization._id,
+    })
+      .sort({ fullName: 1 })
+      .lean(),
   });
 }
 
@@ -199,6 +209,10 @@ export async function updateSettings(req, res) {
     );
     if (!repository)
       return res.status(404).json({ error: "Repository not found" });
+    const before = {
+      isActive: repository.isActive,
+      settings: structuredClone(repository.settings),
+    };
     if (typeof input.isActive === "boolean")
       repository.isActive = input.isActive;
     repository.settings = {
@@ -207,11 +221,36 @@ export async function updateSettings(req, res) {
         Object.entries(input).filter(([key]) => key !== "isActive"),
       ),
     };
+    const after = {
+      isActive: repository.isActive,
+      settings: structuredClone(repository.settings),
+    };
+    await logAudit({
+      req,
+      action: "settings.updated",
+      targetType: "repository",
+      targetId: repository._id,
+      before,
+      after,
+    });
+    if (input.aiProvider && before.settings.aiProvider !== input.aiProvider)
+      await logAudit({
+        req,
+        action: "provider.changed",
+        targetType: "repository",
+        targetId: repository._id,
+        before: { aiProvider: before.settings.aiProvider || "openai" },
+        after: { aiProvider: input.aiProvider },
+      });
     return res.json({ repository });
   }
   const repository = await Repository.findById(req.params.id);
   if (!repository)
     return res.status(404).json({ error: "Repository not found" });
+  const before = {
+    isActive: repository.isActive,
+    settings: repository.settings.toObject(),
+  };
   if (typeof input.isActive === "boolean") repository.isActive = input.isActive;
   Object.entries(input)
     .filter(([key]) => key !== "isActive")
@@ -219,6 +258,27 @@ export async function updateSettings(req, res) {
       repository.settings[key] = value;
     });
   await repository.save();
+  const after = {
+    isActive: repository.isActive,
+    settings: repository.settings.toObject(),
+  };
+  await logAudit({
+    req,
+    action: "settings.updated",
+    targetType: "repository",
+    targetId: repository._id,
+    before,
+    after,
+  });
+  if (input.aiProvider && before.settings.aiProvider !== input.aiProvider)
+    await logAudit({
+      req,
+      action: "provider.changed",
+      targetType: "repository",
+      targetId: repository._id,
+      before: { aiProvider: before.settings.aiProvider },
+      after: { aiProvider: input.aiProvider },
+    });
   return res.json({ repository });
 }
 
@@ -242,10 +302,26 @@ export async function deleteSuppression(req, res) {
     );
     if (index < 0)
       return res.status(404).json({ error: "Suppression pattern not found" });
-    mockSuppressions.splice(index, 1);
+    const [pattern] = mockSuppressions.splice(index, 1);
+    await logAudit({
+      req,
+      action: "suppression.removed",
+      targetType: "suppression",
+      targetId: req.params.patternId,
+      before: pattern,
+    });
     return res.json({ deleted: true });
   }
-  return res.json(
-    await deleteSuppressionPattern(req.params.id, req.params.patternId),
+  const result = await deleteSuppressionPattern(
+    req.params.id,
+    req.params.patternId,
   );
+  await logAudit({
+    req,
+    action: "suppression.removed",
+    targetType: "suppression",
+    targetId: req.params.patternId,
+    before: { repositoryId: req.params.id },
+  });
+  return res.json(result);
 }
