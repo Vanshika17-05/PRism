@@ -26,6 +26,7 @@ import { useStats } from "@/hooks/useStats";
 import { api } from "@/lib/api";
 import { useOrganization } from "@/context/OrganizationContext";
 import { useGithubAppInstall } from "@/hooks/useGithubAppInstall";
+import { QueryErrorCard } from "@/components/feedback/QueryErrorCard";
 
 const personas = ["strict", "balanced", "friendly"].map((value) => ({
   value,
@@ -272,6 +273,13 @@ function SettingsDrawer({ repo, onClose }) {
           <div className="mt-3 space-y-2">
             {suppressions.isLoading ? (
               <ShimmerSkeleton className="h-20" />
+            ) : suppressions.isError ? (
+              <QueryErrorCard
+                compact
+                title="Suppression patterns could not be loaded"
+                error={suppressions.error}
+                onRetry={() => suppressions.refetch()}
+              />
             ) : suppressions.data?.length ? (
               suppressions.data.map((pattern) => (
                 <div className="clay-control p-3" key={pattern.id}>
@@ -337,7 +345,11 @@ export default function Repos() {
   const canManage = role === "owner" || role === "admin";
   const [searchParams, setSearchParams] = useSearchParams();
   const [selected, setSelected] = useState(null);
-  const { connectRepository } = useGithubAppInstall();
+  const {
+    connectRepository,
+    error: installError,
+    refetch: refetchInstall,
+  } = useGithubAppInstall();
   const installationCompleted = searchParams.get("installed") === "true";
   useEffect(() => {
     if (!installationCompleted) return undefined;
@@ -380,6 +392,18 @@ export default function Repos() {
         ))}
       </div>
     );
+  const statsError = stats.find((item) => item.isError)?.error;
+  if (query.isError || statsError)
+    return (
+      <QueryErrorCard
+        title="Repositories could not be loaded"
+        error={query.error || statsError}
+        onRetry={() => {
+          query.refetch();
+          stats.forEach((item) => item.refetch());
+        }}
+      />
+    );
   return (
     <div>
       <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
@@ -406,6 +430,16 @@ export default function Repos() {
           </MagneticButton>
         </div>
       </div>
+      {installError && (
+        <div className="mt-6">
+          <QueryErrorCard
+            compact
+            title="GitHub installation details could not be loaded"
+            error={installError}
+            onRetry={refetchInstall}
+          />
+        </div>
+      )}
       {!query.data?.length && (
         <SpotlightCard className="mt-8 p-10 text-center">
           <span className="clay-icon mx-auto text-accent">

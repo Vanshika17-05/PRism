@@ -40,6 +40,16 @@ export default function Login() {
           <p className="mt-4 text-sm text-muted">
             Checking GitHub configuration…
           </p>
+        ) : config.isError ? (
+          <div className="mt-7 rounded-control border border-high/20 bg-high/5 p-5">
+            <p className="font-bold">Sign-in status could not be checked</p>
+            <button
+              className="mt-3 text-sm font-bold text-accent-dark"
+              onClick={() => config.refetch()}
+            >
+              Try again
+            </button>
+          </div>
         ) : config.data?.githubConfigured ? (
           <a
             href="/api/auth/github"

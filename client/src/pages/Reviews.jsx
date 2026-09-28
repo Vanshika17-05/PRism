@@ -99,12 +99,20 @@ export default function Reviews() {
           </select>
         </div>
       </div>
-      {reviews.error ? (
+      {reviews.error || repos.error ? (
         <div className="clay-card p-10 text-center">
           <RefreshCw className="mx-auto text-accent" />
           <h2 className="mt-4 font-bold">Reviews could not load</h2>
-          <p className="mt-2 text-sm text-muted">{reviews.error.message}</p>
-          <MagneticButton className="mt-5" onClick={() => reviews.refetch()}>
+          <p className="mt-2 text-sm text-muted">
+            {(reviews.error || repos.error).message}
+          </p>
+          <MagneticButton
+            className="mt-5"
+            onClick={() => {
+              reviews.refetch();
+              repos.refetch();
+            }}
+          >
             Try again
           </MagneticButton>
         </div>

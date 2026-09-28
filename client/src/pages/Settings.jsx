@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { api } from "@/lib/api";
 import { ShimmerSkeleton } from "@/components/effects/ShimmerSkeleton";
 import { Link } from "react-router-dom";
+import { QueryErrorCard } from "@/components/feedback/QueryErrorCard";
 
 function FailedJob({ job, retry, dismiss }) {
   const payload = job.payload || {};
@@ -150,6 +151,13 @@ export default function SettingsPage() {
         <div className="mt-5 space-y-3">
           {sessions.isLoading ? (
             <ShimmerSkeleton className="h-20" />
+          ) : sessions.isError ? (
+            <QueryErrorCard
+              compact
+              title="Active sessions could not be loaded"
+              error={sessions.error}
+              onRetry={() => sessions.refetch()}
+            />
           ) : (
             sessions.data?.map((session) => (
               <div

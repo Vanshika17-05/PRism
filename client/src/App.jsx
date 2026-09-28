@@ -13,6 +13,8 @@ import AcceptInvite from "@/pages/AcceptInvite";
 import AuditLogPage from "@/pages/AuditLog";
 import ProfileSettings from "@/pages/ProfileSettings";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
+import { DashboardErrorBoundary } from "@/components/feedback/DashboardErrorBoundary";
+import NotFound from "@/pages/NotFound";
 
 const Page = ({ children }) => (
   <motion.div
@@ -50,7 +52,9 @@ export default function App() {
           path="/dashboard"
           element={
             <ProtectedRoute>
-              <AppShell />
+              <DashboardErrorBoundary>
+                <AppShell />
+              </DashboardErrorBoundary>
             </ProtectedRoute>
           }
         >
@@ -128,7 +132,7 @@ export default function App() {
             </ProtectedRoute>
           }
         />
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="*" element={<NotFound />} />
       </Routes>
     </AnimatePresence>
   );

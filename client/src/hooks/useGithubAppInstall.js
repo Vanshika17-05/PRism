@@ -19,5 +19,7 @@ export function useGithubAppInstall() {
     connectRepository,
     installUrl: config.data?.githubAppInstallUrl,
     isLoading: config.isLoading,
+    error: config.error,
+    refetch: config.refetch,
   };
 }

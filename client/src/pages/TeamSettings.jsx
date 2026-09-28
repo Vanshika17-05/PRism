@@ -4,6 +4,8 @@ import { toast } from "sonner";
 import { api } from "@/lib/api";
 import { useOrganization } from "@/context/OrganizationContext";
 import { MagneticButton } from "@/components/effects/MagneticButton";
+import { ShimmerSkeleton } from "@/components/effects/ShimmerSkeleton";
+import { QueryErrorCard } from "@/components/feedback/QueryErrorCard";
 
 export default function TeamSettings() {
   const { current, role } = useOrganization();
@@ -52,6 +54,15 @@ export default function TeamSettings() {
     onError: (error) => toast.error(error.message),
   });
   const canInvite = role === "owner" || role === "admin";
+  if (team.isLoading) return <ShimmerSkeleton className="h-96" />;
+  if (team.isError)
+    return (
+      <QueryErrorCard
+        title="Team settings could not be loaded"
+        error={team.error}
+        onRetry={() => team.refetch()}
+      />
+    );
   return (
     <div>
       <p className="text-sm font-bold text-accent-dark">TEAM SETTINGS</p>

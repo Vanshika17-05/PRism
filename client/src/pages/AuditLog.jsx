@@ -4,6 +4,7 @@ import { ChevronLeft, ChevronRight, ScrollText } from "lucide-react";
 import { api } from "@/lib/api";
 import { useOrganization } from "@/context/OrganizationContext";
 import { ShimmerSkeleton } from "@/components/effects/ShimmerSkeleton";
+import { QueryErrorCard } from "@/components/feedback/QueryErrorCard";
 
 const labels = {
   "settings.updated": "updated repository settings",
@@ -98,6 +99,15 @@ export default function AuditLogPage() {
           <div className="space-y-3 p-6">
             <ShimmerSkeleton className="h-16" />
             <ShimmerSkeleton className="h-16" />
+          </div>
+        ) : audit.isError ? (
+          <div className="p-6">
+            <QueryErrorCard
+              compact
+              title="Audit activity could not be loaded"
+              error={audit.error}
+              onRetry={() => audit.refetch()}
+            />
           </div>
         ) : audit.data?.items.length ? (
           <div className="overflow-x-auto">

@@ -328,18 +328,29 @@ export default function Overview() {
             </div>
           </div>
           <div className="flex gap-8">
-            <div>
-              <p className="text-xs font-bold text-muted">QUEUE DEPTH</p>
-              <p className="mt-1 text-2xl font-black">
-                {system.data?.queue.depth ?? "—"}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs font-bold text-muted">ERROR RATE</p>
-              <p className="mt-1 text-2xl font-black">
-                {system.data ? `${system.data.errorRate}%` : "—"}
-              </p>
-            </div>
+            {system.isError ? (
+              <button
+                className="text-sm font-bold text-high"
+                onClick={() => system.refetch()}
+              >
+                Worker metrics unavailable · Try again
+              </button>
+            ) : (
+              <>
+                <div>
+                  <p className="text-xs font-bold text-muted">QUEUE DEPTH</p>
+                  <p className="mt-1 text-2xl font-black">
+                    {system.data?.queue.depth ?? "—"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-muted">ERROR RATE</p>
+                  <p className="mt-1 text-2xl font-black">
+                    {system.data ? `${system.data.errorRate}%` : "—"}
+                  </p>
+                </div>
+              </>
+            )}
           </div>
         </div>
       </SpotlightCard>

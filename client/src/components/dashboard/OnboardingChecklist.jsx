@@ -21,15 +21,22 @@ export function OnboardingChecklist({ status }) {
         "Choose the repositories PRism can review from GitHub's installation screen.",
       complete: status.steps.repositoryConnected,
       action: !status.steps.repositoryConnected && (
-        <MagneticButton
-          onClick={() => {
-            if (authConfig.data?.githubAppInstallUrl)
-              window.location.assign(authConfig.data.githubAppInstallUrl);
-          }}
-          disabled={!authConfig.data?.githubAppInstallUrl}
-        >
-          <Github size={16} /> Connect a repository
-        </MagneticButton>
+        <>
+          <MagneticButton
+            onClick={() => {
+              if (authConfig.data?.githubAppInstallUrl)
+                window.location.assign(authConfig.data.githubAppInstallUrl);
+            }}
+            disabled={!authConfig.data?.githubAppInstallUrl}
+          >
+            <Github size={16} /> Connect a repository
+          </MagneticButton>
+          {authConfig.isError && (
+            <p className="mt-2 text-xs text-high">
+              GitHub installation details could not be loaded.
+            </p>
+          )}
+        </>
       ),
     },
     {

@@ -15,6 +15,7 @@ import { useTheme } from "@/context/ThemeContext";
 import { useAuth } from "@/context/AuthContext";
 import { useOrganization } from "@/context/OrganizationContext";
 import { CommandPalette } from "@/components/layout/CommandPalette";
+import { QueryErrorCard } from "@/components/feedback/QueryErrorCard";
 
 const baseItems = [
   {
@@ -64,6 +65,8 @@ export function AppShell() {
     current: currentOrg,
     role,
     switchOrganization,
+    error: organizationError,
+    retry: retryOrganizations,
   } = useOrganization();
   const failedJobs = useQuery({
     queryKey: ["failed-reviews"],
@@ -88,6 +91,16 @@ export function AppShell() {
     await logout();
     navigate("/login");
   };
+  if (organizationError)
+    return (
+      <main className="grid min-h-screen place-items-center bg-bg p-5 text-primary">
+        <QueryErrorCard
+          title="Your workspace could not be loaded"
+          error={organizationError}
+          onRetry={retryOrganizations}
+        />
+      </main>
+    );
   return (
     <div className="min-h-screen bg-bg text-primary md:flex">
       <aside className="sidebar fixed inset-y-0 left-0 z-30 hidden w-64 flex-col px-5 py-7 md:flex">

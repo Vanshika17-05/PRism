@@ -27,7 +27,11 @@ export function CommandPalette({ theme, toggleTheme, signOut }) {
   const [open, setOpen] = useState(false);
   const navigate = useNavigate();
   const reviews = useReviews({ page: 1 });
-  const { connectRepository, installUrl } = useGithubAppInstall();
+  const {
+    connectRepository,
+    installUrl,
+    error: installError,
+  } = useGithubAppInstall();
   const shortcut =
     typeof navigator !== "undefined" &&
     /Mac|iPhone|iPad/.test(navigator.platform)
@@ -123,6 +127,14 @@ export function CommandPalette({ theme, toggleTheme, signOut }) {
               ))}
             </Command.Group>
           )}
+          {reviews.isError && (
+            <Command.Group heading="Search reviews">
+              <Command.Item disabled value="reviews unavailable">
+                <GitPullRequest size={17} />
+                <span>Recent reviews are temporarily unavailable</span>
+              </Command.Item>
+            </Command.Group>
+          )}
           <Command.Group heading="Actions">
             <Command.Item
               value="action connect repository github install"
@@ -131,6 +143,9 @@ export function CommandPalette({ theme, toggleTheme, signOut }) {
             >
               <Github size={17} />
               <span>Connect a repository</span>
+              {installError && (
+                <span className="ml-auto text-xs">Unavailable</span>
+              )}
             </Command.Item>
             <Command.Item
               value="action toggle dark light theme"
