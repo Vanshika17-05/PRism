@@ -82,6 +82,28 @@ services:
       redis:
         condition: service_healthy
 
+  worker:
+    build:
+      context: .
+      dockerfile: server/Dockerfile.worker
+    restart: unless-stopped
+    env_file: server/.env
+    environment:
+      MONGODB_URI: mongodb://mongo:27017/prism
+      PYTHON_SERVICE_URL: http://python-service:8100
+      REDIS_URL: redis://redis:6379
+      LOCAL_STORAGE_DIR: /data/storage
+      ANALYTICS_DB_PATH: /data/analytics.sqlite
+    volumes:
+      - prism_server_data:/data
+    depends_on:
+      mongo:
+        condition: service_healthy
+      python-service:
+        condition: service_started
+      redis:
+        condition: service_healthy
+
 volumes:
   prism_mongo:
   prism_chroma:

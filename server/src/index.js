@@ -4,7 +4,7 @@ import { createApp } from "./app.js";
 import { connectDatabase } from "./config/db.js";
 import { env } from "./config/env.js";
 import { logger } from "./utils/logger.js";
-import { closeReviewQueue, startReviewWorker } from "./queues/review.queue.js";
+import { closeReviewQueue } from "./queues/review.queue.js";
 import { initializeRealtime } from "./services/realtime.service.js";
 
 await connectDatabase();
@@ -14,7 +14,6 @@ if (env.USE_MOCKS)
   );
 const server = http.createServer(createApp());
 initializeRealtime(server);
-startReviewWorker();
 server.listen(env.PORT, "0.0.0.0", () =>
   logger.info({ port: env.PORT }, "PRism API listening"),
 );

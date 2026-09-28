@@ -16,12 +16,19 @@ import { failedReviewRouter } from "./routes/failed-review.routes.js";
 import { metricsRouter } from "./routes/metrics.routes.js";
 import { storageRouter } from "./routes/storage.routes.js";
 import { publicRouter } from "./routes/public.routes.js";
-import { organizationRouter, inviteRouter } from "./routes/organization.routes.js";
+import {
+  organizationRouter,
+  inviteRouter,
+} from "./routes/organization.routes.js";
 import { requestContextMiddleware } from "./utils/requestContext.js";
 import { authMiddleware } from "./middleware/auth.js";
 import { notFound } from "./middleware/notFound.js";
 import { errorHandler } from "./middleware/errorHandler.js";
-import { authenticatedUserLimiter, globalApiLimiter, webhookCeilingLimiter } from "./middleware/rateLimits.js";
+import {
+  authenticatedUserLimiter,
+  globalApiLimiter,
+  webhookCeilingLimiter,
+} from "./middleware/rateLimits.js";
 
 export function createApp() {
   const app = express();
@@ -32,7 +39,17 @@ export function createApp() {
   app.disable("x-powered-by");
   app.set("trust proxy", 1);
   app.use(helmet());
-  app.use(cors({ origin: [env.CLIENT_URL, env.APP_URL], credentials: true }));
+  // Production accepts browser credentials only from the single public Vercel origin.
+  // GitHub webhooks and other server-to-server requests are not governed by CORS.
+  app.use(
+    cors({
+      origin:
+        env.NODE_ENV === "production"
+          ? env.CLIENT_URL
+          : [env.CLIENT_URL, env.APP_URL],
+      credentials: true,
+    }),
+  );
   app.use(requestContextMiddleware);
   app.use(pinoHttp({ logger }));
   app.use(
@@ -46,14 +63,44 @@ export function createApp() {
   app.use("/api/health", healthRouter);
   app.use("/api/auth", authRouter);
   app.use("/api/public", publicRouter);
-  app.use("/api/organizations", authMiddleware, authenticatedUserLimiter, organizationRouter);
-  app.use("/api/invites", authMiddleware, authenticatedUserLimiter, inviteRouter);
-  app.use("/api/reviews", authMiddleware, authenticatedUserLimiter, reviewRouter);
+  app.use(
+    "/api/organizations",
+    authMiddleware,
+    authenticatedUserLimiter,
+    organizationRouter,
+  );
+  app.use(
+    "/api/invites",
+    authMiddleware,
+    authenticatedUserLimiter,
+    inviteRouter,
+  );
+  app.use(
+    "/api/reviews",
+    authMiddleware,
+    authenticatedUserLimiter,
+    reviewRouter,
+  );
   app.use("/api/repos", authMiddleware, authenticatedUserLimiter, repoRouter);
-  app.use("/api/failed-reviews", authMiddleware, authenticatedUserLimiter, failedReviewRouter);
-  app.use("/api/storage", authMiddleware, authenticatedUserLimiter, storageRouter);
+  app.use(
+    "/api/failed-reviews",
+    authMiddleware,
+    authenticatedUserLimiter,
+    failedReviewRouter,
+  );
+  app.use(
+    "/api/storage",
+    authMiddleware,
+    authenticatedUserLimiter,
+    storageRouter,
+  );
   // Operational metrics are authenticated because queue/error data can reveal internal workload patterns.
-  app.use("/api/metrics", authMiddleware, authenticatedUserLimiter, metricsRouter);
+  app.use(
+    "/api/metrics",
+    authMiddleware,
+    authenticatedUserLimiter,
+    metricsRouter,
+  );
   if (existsSync(clientDist)) {
     app.use(
       express.static(clientDist, {
