@@ -7,6 +7,9 @@ import { User } from "../models/User.model.js";
 import { mockInvites, mockOrganizations } from "../data/mockOrganizations.js";
 import { logger } from "../utils/logger.js";
 import { logAudit } from "../services/audit.service.js";
+import { Repository } from "../models/Repository.model.js";
+import { Review } from "../models/Review.model.js";
+import { mockRepositories, mockReviews } from "../data/mockData.js";
 
 const inviteInput = z.object({
   email: z.string().email(),
@@ -47,6 +50,64 @@ export async function organizationDetail(req, res) {
     .select("email role expiresAt createdAt")
     .lean();
   res.json({ organization, invites, role: req.organizationRole });
+}
+
+export async function onboardingStatus(req, res) {
+  const organizationId = String(req.organization._id);
+  let repositoryCount;
+  let reviewCount;
+  let completedReviewCount;
+
+  if (env.USE_MOCKS) {
+    const repositoryIds = mockRepositories
+      .filter((repo) => String(repo.organizationId) === organizationId)
+      .map((repo) => String(repo._id));
+    const reviews = mockReviews.filter((review) =>
+      repositoryIds.includes(
+        String(review.repository?._id || review.repository),
+      ),
+    );
+    repositoryCount = repositoryIds.length;
+    reviewCount = reviews.length;
+    completedReviewCount = reviews.filter(
+      (review) => review.status === "completed",
+    ).length;
+  } else {
+    const repositoryIds = await Repository.find({
+      organizationId: req.organization._id,
+    }).distinct("_id");
+    [repositoryCount, reviewCount, completedReviewCount] = await Promise.all([
+      Promise.resolve(repositoryIds.length),
+      Review.countDocuments({ repository: { $in: repositoryIds } }),
+      Review.countDocuments({
+        repository: { $in: repositoryIds },
+        status: "completed",
+      }),
+    ]);
+  }
+
+  const completedNow = repositoryCount > 0 && completedReviewCount > 0;
+  if (completedNow && !req.organization.hasCompletedOnboarding) {
+    if (env.USE_MOCKS) req.organization.hasCompletedOnboarding = true;
+    else
+      await Organization.updateOne(
+        { _id: req.organization._id },
+        { $set: { hasCompletedOnboarding: true } },
+      );
+  }
+
+  res.json({
+    hasCompletedOnboarding:
+      Boolean(req.organization.hasCompletedOnboarding) || completedNow,
+    repositoryCount,
+    reviewCount,
+    completedReviewCount,
+    steps: {
+      repositoryConnected: repositoryCount > 0,
+      pullRequestOpened: reviewCount > 0,
+      firstReviewCompleted: completedReviewCount > 0,
+    },
+  });
 }
 export async function inviteMember(req, res) {
   const input = inviteInput.parse(req.body);

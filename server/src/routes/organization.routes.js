@@ -3,6 +3,7 @@ import {
   acceptInvite,
   inviteMember,
   listOrganizations,
+  onboardingStatus,
   organizationDetail,
   removeMember,
   updateMemberRole,
@@ -12,6 +13,11 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 import { listAuditLog } from "../controllers/audit.controller.js";
 export const organizationRouter = Router();
 organizationRouter.get("/", asyncHandler(listOrganizations));
+organizationRouter.get(
+  "/:id/onboarding",
+  roleMiddleware("member", "organization"),
+  asyncHandler(onboardingStatus),
+);
 organizationRouter.get(
   "/:id",
   roleMiddleware("member", "organization"),

@@ -5,7 +5,11 @@ import jwt from "jsonwebtoken";
 import { createApp } from "../src/app.js";
 import { env } from "../src/config/env.js";
 import { enqueueReview } from "../src/queues/review.queue.js";
-import { mockFailedReviews, mockRepositories } from "../src/data/mockData.js";
+import {
+  mockFailedReviews,
+  mockRepositories,
+  mockReviews,
+} from "../src/data/mockData.js";
 import {
   mockInvites,
   mockOrganizations,
@@ -40,6 +44,52 @@ const token = jwt.sign(
   env.JWT_SECRET,
   { expiresIn: "5m" },
 );
+
+test("onboarding tracks progress and permanently records completion", () =>
+  withServer(async (base) => {
+    const headers = { authorization: `Bearer ${token}` };
+    const organization = mockOrganizations[0];
+    const savedRepos = [...mockRepositories];
+    const savedReviews = [...mockReviews];
+    organization.hasCompletedOnboarding = false;
+    try {
+      mockRepositories.splice(0);
+      mockReviews.splice(0);
+      const empty = await fetch(
+        `${base}/api/organizations/${organization._id}/onboarding`,
+        { headers },
+      );
+      assert.equal(empty.status, 200);
+      assert.deepEqual((await empty.json()).steps, {
+        repositoryConnected: false,
+        pullRequestOpened: false,
+        firstReviewCompleted: false,
+      });
+
+      mockRepositories.push(...savedRepos);
+      mockReviews.push(...savedReviews);
+      const completed = await fetch(
+        `${base}/api/organizations/${organization._id}/onboarding`,
+        { headers },
+      );
+      assert.equal(completed.status, 200);
+      assert.equal((await completed.json()).hasCompletedOnboarding, true);
+      assert.equal(organization.hasCompletedOnboarding, true);
+
+      mockRepositories.splice(0);
+      mockReviews.splice(0);
+      const permanent = await fetch(
+        `${base}/api/organizations/${organization._id}/onboarding`,
+        { headers },
+      );
+      assert.equal(permanent.status, 200);
+      assert.equal((await permanent.json()).hasCompletedOnboarding, true);
+    } finally {
+      mockRepositories.splice(0, mockRepositories.length, ...savedRepos);
+      mockReviews.splice(0, mockReviews.length, ...savedReviews);
+      organization.hasCompletedOnboarding = false;
+    }
+  }));
 
 test("profile name and staged avatar save end to end", () =>
   withServer(async (base) => {

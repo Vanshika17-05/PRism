@@ -36,6 +36,8 @@ import { useRepos } from "@/hooks/useRepos";
 import { useReviews } from "@/hooks/useReviews";
 import { useStats } from "@/hooks/useStats";
 import { api } from "@/lib/api";
+import { useOrganization } from "@/context/OrganizationContext";
+import { OnboardingChecklist } from "@/components/dashboard/OnboardingChecklist";
 
 const stagger = { hidden: {}, show: { transition: { staggerChildren: 0.05 } } };
 const reveal = { hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0 } };
@@ -205,9 +207,19 @@ function TooltipBox({ active, payload, label }) {
 export default function Overview() {
   const navigate = useNavigate();
   const reduce = useReducedMotion();
+  const { current } = useOrganization();
   const repos = useRepos();
   const reviews = useReviews({ page: 1 });
   const stats = useStats(repos.data || []);
+  const onboarding = useQuery({
+    queryKey: ["onboarding", current?._id],
+    enabled: Boolean(current?._id),
+    queryFn: async () =>
+      (await api.get(`/api/organizations/${current._id}/onboarding`)).data,
+    refetchOnWindowFocus: true,
+    refetchInterval: (query) =>
+      query.state.data?.hasCompletedOnboarding ? false : 30_000,
+  });
   const system = useQuery({
     queryKey: ["metrics"],
     queryFn: async () => (await api.get("/api/metrics")).data,
@@ -216,9 +228,13 @@ export default function Overview() {
   const loading =
     repos.isLoading ||
     reviews.isLoading ||
+    onboarding.isLoading ||
     stats.some((query) => query.isLoading);
   const error =
-    repos.error || reviews.error || stats.find((query) => query.error)?.error;
+    repos.error ||
+    reviews.error ||
+    onboarding.error ||
+    stats.find((query) => query.error)?.error;
   const reviewItems = reviews.data?.items || [];
   const metrics = useMemo(
     () => mergeMetrics(repos.data || [], stats, reviewItems),
@@ -255,6 +271,8 @@ export default function Overview() {
         </MagneticButton>
       </div>
     );
+  if (onboarding.data && !onboarding.data.hasCompletedOnboarding)
+    return <OnboardingChecklist status={onboarding.data} />;
   const noData = metrics.totalReviews === 0;
   const cards = [
     {
