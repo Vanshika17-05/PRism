@@ -58,3 +58,12 @@ export async function readLocalObject(key) {
     throw new Error("Invalid storage key");
   return fs.readFile(target);
 }
+
+export async function readStoredObject(key) {
+  const clean = safeKey(key);
+  if (!env.USE_S3) return readLocalObject(clean);
+  const response = await s3().send(
+    new GetObjectCommand({ Bucket: env.AWS_S3_BUCKET, Key: clean }),
+  );
+  return Buffer.from(await response.Body.transformToByteArray());
+}

@@ -11,6 +11,7 @@ import SettingsPage from "@/pages/Settings";
 import TeamSettings from "@/pages/TeamSettings";
 import AcceptInvite from "@/pages/AcceptInvite";
 import AuditLogPage from "@/pages/AuditLog";
+import ProfileSettings from "@/pages/ProfileSettings";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 
 const Page = ({ children }) => (
@@ -107,6 +108,14 @@ export default function App() {
             element={
               <Page>
                 <AuditLogPage />
+              </Page>
+            }
+          />
+          <Route
+            path="settings/profile"
+            element={
+              <Page>
+                <ProfileSettings />
               </Page>
             }
           />

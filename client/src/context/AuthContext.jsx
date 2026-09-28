@@ -16,6 +16,9 @@ export function AuthProvider({ children }) {
     () => ({
       user,
       loading,
+      updateUser(nextUser) {
+        setUser(nextUser);
+      },
       async logout() {
         try {
           await api.post("/api/auth/logout");

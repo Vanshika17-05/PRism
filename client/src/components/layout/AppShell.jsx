@@ -58,7 +58,12 @@ export function AppShell() {
   const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
   const { user, logout } = useAuth();
-  const { organizations, current: currentOrg, role, switchOrganization } = useOrganization();
+  const {
+    organizations,
+    current: currentOrg,
+    role,
+    switchOrganization,
+  } = useOrganization();
   const failedJobs = useQuery({
     queryKey: ["failed-reviews"],
     queryFn: async () => (await api.get("/api/failed-reviews?limit=1")).data,
@@ -83,11 +88,23 @@ export function AppShell() {
       <aside className="sidebar fixed inset-y-0 left-0 z-30 hidden w-64 flex-col px-5 py-7 md:flex">
         <Logo />
         {organizations.length > 1 ? (
-          <select className="clay-input mt-6 text-xs" value={currentOrg?._id || ""} onChange={(event) => switchOrganization(event.target.value)} aria-label="Organization">
-            {organizations.map((org) => <option key={org._id} value={org._id}>{org.name}</option>)}
+          <select
+            className="clay-input mt-6 text-xs"
+            value={currentOrg?._id || ""}
+            onChange={(event) => switchOrganization(event.target.value)}
+            aria-label="Organization"
+          >
+            {organizations.map((org) => (
+              <option key={org._id} value={org._id}>
+                {org.name}
+              </option>
+            ))}
           </select>
         ) : currentOrg ? (
-          <div className="clay-control mt-6 px-3 py-2 text-xs font-bold">{currentOrg.name}<span className="ml-2 text-muted">· {role}</span></div>
+          <div className="clay-control mt-6 px-3 py-2 text-xs font-bold">
+            {currentOrg.name}
+            <span className="ml-2 text-muted">· {role}</span>
+          </div>
         ) : null}
         <div className="mt-12 text-[10px] font-bold uppercase tracking-[.2em] text-muted">
           Workspace
@@ -106,9 +123,24 @@ export function AppShell() {
             <Logo />
           </div>
           <div className="hidden text-sm text-muted md:block">
-            Welcome back, <b className="text-primary">{user?.name}</b> <span className="ml-2">· {currentOrg?.name}</span>
+            Welcome back,{" "}
+            <b className="text-primary">
+              {user?.displayName || user?.name || user?.username}
+            </b>{" "}
+            <span className="ml-2">· {currentOrg?.name}</span>
           </div>
           <div className="flex items-center gap-2">
+            <img
+              className="clay-control hidden size-10 rounded-full object-cover p-1 sm:block"
+              src={
+                user?.avatarUrl ||
+                user?.githubAvatarUrl ||
+                `https://github.com/${user?.username}.png`
+              }
+              alt={
+                user?.displayName || user?.name || user?.username || "Profile"
+              }
+            />
             <span className="clay-badge hidden items-center gap-2 sm:inline-flex">
               <i
                 className={`size-2 rounded-full ${health.isSuccess ? "bg-accent shadow-[0_0_12px_var(--accent-glow)]" : "bg-medium"}`}

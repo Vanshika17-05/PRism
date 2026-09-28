@@ -16,6 +16,7 @@ import { failedReviewRouter } from "./routes/failed-review.routes.js";
 import { metricsRouter } from "./routes/metrics.routes.js";
 import { storageRouter } from "./routes/storage.routes.js";
 import { publicRouter } from "./routes/public.routes.js";
+import { userRouter } from "./routes/user.routes.js";
 import {
   organizationRouter,
   inviteRouter,
@@ -82,6 +83,7 @@ export function createApp() {
     reviewRouter,
   );
   app.use("/api/repos", authMiddleware, authenticatedUserLimiter, repoRouter);
+  app.use("/api/users", authMiddleware, authenticatedUserLimiter, userRouter);
   app.use(
     "/api/failed-reviews",
     authMiddleware,

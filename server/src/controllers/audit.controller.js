@@ -24,6 +24,7 @@ export async function listAuditLog(req, res) {
         actorId: {
           _id: entry.actorId,
           username: req.user.username,
+          displayName: req.user.displayName || "",
           name: req.user.name,
           avatarUrl: req.user.avatarUrl || "",
         },
@@ -43,7 +44,10 @@ export async function listAuditLog(req, res) {
   if (action) filter.action = action;
   const [items, total] = await Promise.all([
     AuditLog.find(filter)
-      .populate("actorId", "username name avatarUrl")
+      .populate(
+        "actorId",
+        "username displayName name avatarUrl githubAvatarUrl",
+      )
       .sort({ createdAt: -1 })
       .skip((page - 1) * limit)
       .limit(limit)

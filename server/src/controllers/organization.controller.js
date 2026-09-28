@@ -22,7 +22,10 @@ export async function listOrganizations(req, res) {
   const organizations = await Organization.find({
     "members.userId": req.user._id,
   })
-    .populate("members.userId", "username name email avatarUrl")
+    .populate(
+      "members.userId",
+      "username displayName name email avatarUrl githubAvatarUrl",
+    )
     .lean();
   res.json({ organizations });
 }
@@ -35,7 +38,10 @@ export async function organizationDetail(req, res) {
       ),
     });
   const organization = await Organization.findById(req.organization._id)
-    .populate("members.userId", "username name email avatarUrl")
+    .populate(
+      "members.userId",
+      "username displayName name email avatarUrl githubAvatarUrl",
+    )
     .lean();
   const invites = await Invite.find({ organizationId: organization._id })
     .select("email role expiresAt createdAt")

@@ -6,6 +6,7 @@ import {
   RotateCcw,
   ScrollText,
   Trash2,
+  UserRound,
 } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
@@ -118,6 +119,12 @@ export default function SettingsPage() {
         to="/dashboard/settings/audit-log"
       >
         <ScrollText size={15} /> View audit log
+      </Link>
+      <Link
+        className="clay-control ml-3 mt-5 inline-flex items-center gap-2 px-4 py-2 text-sm font-bold text-accent-dark"
+        to="/dashboard/settings/profile"
+      >
+        <UserRound size={15} /> Edit profile
       </Link>
       <section className="clay-card mt-8 p-6">
         <div className="flex flex-wrap items-center justify-between gap-3">

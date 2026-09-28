@@ -121,13 +121,17 @@ export default function AuditLogPage() {
                             className="size-9 rounded-full"
                             src={
                               actor.avatarUrl ||
+                              actor.githubAvatarUrl ||
                               `https://github.com/${actor.username}.png`
                             }
                             alt=""
                           />
                           <div>
                             <p className="font-bold">
-                              {actor.name || actor.username || "Unknown user"}
+                              {actor.displayName ||
+                                actor.name ||
+                                actor.username ||
+                                "Unknown user"}
                             </p>
                             <p className="text-xs text-muted">
                               @{actor.username || "unknown"}

@@ -32,11 +32,100 @@ const token = jwt.sign(
     username: "test-engineer",
     name: "Test Engineer",
     email: "test@example.com",
+    githubUrl: "https://github.com/test-engineer",
+    githubAvatarUrl: "https://github.com/test-engineer.png",
+    avatarUrl: "https://github.com/test-engineer.png",
     jti: testSession.jti,
   },
   env.JWT_SECRET,
   { expiresIn: "5m" },
 );
+
+test("profile name and staged avatar save end to end", () =>
+  withServer(async (base) => {
+    const headers = { authorization: `Bearer ${token}` };
+    const form = new FormData();
+    const png = new Uint8Array([
+      0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x00,
+    ]);
+    form.append("avatar", new Blob([png], { type: "image/png" }), "avatar.png");
+    const upload = await fetch(`${base}/api/users/me/avatar`, {
+      method: "POST",
+      headers,
+      body: form,
+    });
+    assert.equal(upload.status, 201);
+    const { avatarUrl } = await upload.json();
+    assert.equal(avatarUrl, "/api/users/avatar/test-user");
+
+    const saved = await fetch(`${base}/api/users/me`, {
+      method: "PATCH",
+      headers: { ...headers, "content-type": "application/json" },
+      body: JSON.stringify({ displayName: "Vaani", avatarUrl }),
+    });
+    assert.equal(saved.status, 200);
+    const savedUser = (await saved.json()).user;
+    assert.equal(savedUser.displayName, "Vaani");
+    assert.equal(savedUser.avatarUrl, avatarUrl);
+
+    const avatar = await fetch(`${base}${avatarUrl}`, { headers });
+    assert.equal(avatar.status, 200);
+    assert.equal(avatar.headers.get("content-type"), "image/png");
+    assert.deepEqual(new Uint8Array(await avatar.arrayBuffer()), png);
+
+    const refreshed = await fetch(`${base}/api/auth/me`, { headers });
+    assert.equal(refreshed.status, 200);
+    assert.equal((await refreshed.json()).user.displayName, "Vaani");
+
+    const reverted = await fetch(`${base}/api/users/me`, {
+      method: "PATCH",
+      headers: { ...headers, "content-type": "application/json" },
+      body: JSON.stringify({ avatarUrl: "" }),
+    });
+    assert.equal(reverted.status, 200);
+    assert.equal(
+      (await reverted.json()).user.avatarUrl,
+      "https://github.com/test-engineer.png",
+    );
+  }));
+
+test("avatar upload rejects spoofed and oversized files", () =>
+  withServer(async (base) => {
+    const headers = { authorization: `Bearer ${token}` };
+    const spoofed = new FormData();
+    spoofed.append(
+      "avatar",
+      new Blob(["not an image"], { type: "image/png" }),
+      "fake.png",
+    );
+    assert.equal(
+      (
+        await fetch(`${base}/api/users/me/avatar`, {
+          method: "POST",
+          headers,
+          body: spoofed,
+        })
+      ).status,
+      400,
+    );
+
+    const oversized = new FormData();
+    oversized.append(
+      "avatar",
+      new Blob([new Uint8Array(2 * 1024 * 1024 + 1)], { type: "image/png" }),
+      "large.png",
+    );
+    assert.equal(
+      (
+        await fetch(`${base}/api/users/me/avatar`, {
+          method: "POST",
+          headers,
+          body: oversized,
+        })
+      ).status,
+      413,
+    );
+  }));
 
 test("fresh GitHub sign-in creates an idempotent personal owner workspace", async () => {
   let operation;

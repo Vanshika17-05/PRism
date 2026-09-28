@@ -3,6 +3,7 @@ import jwt from "jsonwebtoken";
 import { env } from "../config/env.js";
 import { User } from "../models/User.model.js";
 import { ensurePersonalOrganization } from "../services/organization.service.js";
+import { mockProfileFor } from "../data/mockUsers.js";
 import {
   createSession,
   listSessions,
@@ -34,7 +35,9 @@ function publicUser(user) {
     _id: String(user._id),
     githubId: user.githubId,
     username: user.username,
-    avatarUrl: user.avatarUrl,
+    displayName: user.displayName || "",
+    avatarUrl: user.avatarUrl || user.githubAvatarUrl || "",
+    githubAvatarUrl: user.githubAvatarUrl || user.avatarUrl || "",
     githubUrl: user.githubUrl,
     email: user.email || "",
     name: user.name,
@@ -128,7 +131,7 @@ export async function githubCallback(req, res) {
   const identity = {
     githubId: profile.id,
     username: profile.login,
-    avatarUrl: profile.avatar_url,
+    githubAvatarUrl: profile.avatar_url,
     githubUrl: profile.html_url,
     email,
     name: profile.name || profile.login,
@@ -136,12 +139,19 @@ export async function githubCallback(req, res) {
   };
   // Mock infrastructure still performs genuine GitHub OAuth; only persistence is skipped when MongoDB is intentionally disabled.
   const user = env.USE_MOCKS
-    ? { ...identity, _id: `github-${profile.id}` }
-    : await User.findOneAndUpdate({ githubId: profile.id }, identity, {
-        upsert: true,
-        new: true,
-        setDefaultsOnInsert: true,
-      });
+    ? {
+        ...identity,
+        avatarUrl: profile.avatar_url,
+        _id: `github-${profile.id}`,
+      }
+    : await User.findOneAndUpdate(
+        { githubId: profile.id },
+        {
+          $set: identity,
+          $setOnInsert: { avatarUrl: profile.avatar_url },
+        },
+        { upsert: true, new: true, setDefaultsOnInsert: true },
+      );
   if (!env.USE_MOCKS) await ensurePersonalOrganization(user);
   res.clearCookie(stateCookie, cookieBase);
   res.cookie(sessionCookie, await issueToken(user, req.get("user-agent")), {
@@ -156,8 +166,11 @@ export async function logout(req, res) {
   res.clearCookie(sessionCookie, cookieBase);
   return res.status(204).end();
 }
-export function me(req, res) {
-  return res.json({ user: req.user });
+export async function me(req, res) {
+  const user = env.USE_MOCKS
+    ? mockProfileFor(req.user)
+    : await User.findById(req.user._id);
+  return res.json({ user: publicUser(user) });
 }
 
 export async function sessions(req, res) {

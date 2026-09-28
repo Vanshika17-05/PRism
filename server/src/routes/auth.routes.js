@@ -28,7 +28,12 @@ authRouter.post(
   authenticatedUserLimiter,
   asyncHandler(logout),
 );
-authRouter.get("/me", authMiddleware, authenticatedUserLimiter, me);
+authRouter.get(
+  "/me",
+  authMiddleware,
+  authenticatedUserLimiter,
+  asyncHandler(me),
+);
 authRouter.get(
   "/sessions",
   authMiddleware,
