@@ -14,6 +14,7 @@ import { api } from "@/lib/api";
 import { useTheme } from "@/context/ThemeContext";
 import { useAuth } from "@/context/AuthContext";
 import { useOrganization } from "@/context/OrganizationContext";
+import { CommandPalette } from "@/components/layout/CommandPalette";
 
 const baseItems = [
   {
@@ -83,6 +84,10 @@ export function AppShell() {
     retry: 0,
     refetchInterval: 30_000,
   });
+  const signOut = async () => {
+    await logout();
+    navigate("/login");
+  };
   return (
     <div className="min-h-screen bg-bg text-primary md:flex">
       <aside className="sidebar fixed inset-y-0 left-0 z-30 hidden w-64 flex-col px-5 py-7 md:flex">
@@ -130,6 +135,11 @@ export function AppShell() {
             <span className="ml-2">· {currentOrg?.name}</span>
           </div>
           <div className="flex items-center gap-2">
+            <CommandPalette
+              theme={theme}
+              toggleTheme={toggleTheme}
+              signOut={signOut}
+            />
             <img
               className="clay-control hidden size-10 rounded-full object-cover p-1 sm:block"
               src={
@@ -160,10 +170,7 @@ export function AppShell() {
             </button>
             <button
               className="clay-icon"
-              onClick={async () => {
-                await logout();
-                navigate("/login");
-              }}
+              onClick={signOut}
               aria-label="Sign out"
             >
               <LogOut size={17} />

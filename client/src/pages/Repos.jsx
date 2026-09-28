@@ -25,6 +25,7 @@ import { useRepos } from "@/hooks/useRepos";
 import { useStats } from "@/hooks/useStats";
 import { api } from "@/lib/api";
 import { useOrganization } from "@/context/OrganizationContext";
+import { useGithubAppInstall } from "@/hooks/useGithubAppInstall";
 
 const personas = ["strict", "balanced", "friendly"].map((value) => ({
   value,
@@ -336,17 +337,8 @@ export default function Repos() {
   const canManage = role === "owner" || role === "admin";
   const [searchParams, setSearchParams] = useSearchParams();
   const [selected, setSelected] = useState(null);
-  const authConfig = useQuery({
-    queryKey: ["auth-config"],
-    queryFn: async () => (await api.get("/api/auth/config")).data,
-    staleTime: Infinity,
-  });
-  const installUrl = authConfig.data?.githubAppInstallUrl;
+  const { connectRepository } = useGithubAppInstall();
   const installationCompleted = searchParams.get("installed") === "true";
-  const connectRepository = () => {
-    if (installUrl) window.location.assign(installUrl);
-    else toast.error("GITHUB_APP_SLUG is not configured on the server");
-  };
   useEffect(() => {
     if (!installationCompleted) return undefined;
     toast.success("Repository connected! It may take a few seconds to appear.");
@@ -361,11 +353,14 @@ export default function Repos() {
         5_000,
       ),
       window.setTimeout(() => {
-        setSearchParams((current) => {
-          const next = new URLSearchParams(current);
-          next.delete("installed");
-          return next;
-        }, { replace: true });
+        setSearchParams(
+          (current) => {
+            const next = new URLSearchParams(current);
+            next.delete("installed");
+            return next;
+          },
+          { replace: true },
+        );
       }, 5_100),
     ];
     return () => retries.forEach(window.clearTimeout);
@@ -416,7 +411,9 @@ export default function Repos() {
           <span className="clay-icon mx-auto text-accent">
             <Github />
           </span>
-          <h2 className="mt-5 text-2xl font-black">Connect your first repository</h2>
+          <h2 className="mt-5 text-2xl font-black">
+            Connect your first repository
+          </h2>
           <p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-muted">
             Install the PRism GitHub App and choose the repositories you want
             reviewed. Repository access always stays under GitHub's control.
@@ -458,7 +455,9 @@ export default function Repos() {
                       role="switch"
                       aria-checked={repo.isActive}
                       disabled={!canManage}
-                      title={canManage ? "Toggle reviews" : "Admin role required"}
+                      title={
+                        canManage ? "Toggle reviews" : "Admin role required"
+                      }
                       onClick={() => toggle.mutate(repo)}
                       className={`relative h-7 w-12 rounded-full p-1 transition ${repo.isActive ? "bg-accent" : "bg-surface-alt"}`}
                     >
@@ -495,7 +494,9 @@ export default function Repos() {
                     className="clay-control mt-6 flex w-full items-center justify-center gap-2 py-3 text-sm font-bold"
                     onClick={() => setSelected(repo)}
                     disabled={!canManage}
-                    title={canManage ? "Configure repository" : "Admin role required"}
+                    title={
+                      canManage ? "Configure repository" : "Admin role required"
+                    }
                   >
                     <Settings2 size={16} /> Configure
                   </button>

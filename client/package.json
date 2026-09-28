@@ -9,13 +9,14 @@
     "preview": "vite preview --host 0.0.0.0"
   },
   "dependencies": {
-    "@prism/shared-types": "workspace:*",
     "@fontsource/inter": "^5.2.6",
+    "@prism/shared-types": "workspace:*",
     "@radix-ui/react-slot": "^1.2.3",
     "@tanstack/react-query": "^5.90.2",
     "axios": "^1.12.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "cmdk": "^1.1.1",
     "framer-motion": "^12.23.22",
     "lucide-react": "^0.545.0",
     "react": "^19.1.1",
